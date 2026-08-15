@@ -31,6 +31,12 @@ export interface PlatformDef {
   validationRegex?: RegExp;
 }
 
+export interface DetectedPlatformLink {
+  platform: PlatformDef;
+  username: string;
+  url: string;
+}
+
 // ─── Platform Registry ───
 
 export const PLATFORMS: Record<string, PlatformDef> = {
@@ -296,4 +302,250 @@ export function getDeepLinkUrl(platformId: string, username: string): string | n
   const platform = PLATFORMS[platformId];
   if (!platform?.deepLinkPattern) return null;
   return platform.deepLinkPattern.replace(/{username}/g, username);
+}
+
+function normalizeLinkInput(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return '';
+  if (/^[a-z][a-z\d+.-]*:/i.test(trimmed)) return trimmed;
+  if (trimmed.includes('@') && !trimmed.includes('://') && !trimmed.includes('/')) {
+    return `mailto:${trimmed}`;
+  }
+  return `https://${trimmed}`;
+}
+
+function parseLink(input: string): URL | null {
+  try {
+    return new URL(normalizeLinkInput(input));
+  } catch {
+    return null;
+  }
+}
+
+function firstPathSegment(url: URL): string {
+  return url.pathname.split('/').filter(Boolean)[0] ?? '';
+}
+
+function remainingPath(url: URL, startIndex = 1): string {
+  return url.pathname.split('/').filter(Boolean).slice(startIndex).join('/');
+}
+
+export function detectPlatformFromUrl(input: string): DetectedPlatformLink | null {
+  const raw = input.trim();
+  if (!raw) return null;
+
+  if (/^mailto:/i.test(raw)) {
+    const email = raw.slice(7).trim();
+    if (!email) return null;
+    return {
+      platform: PLATFORMS.email,
+      username: email,
+      url: `mailto:${email}`,
+    };
+  }
+
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+    return {
+      platform: PLATFORMS.email,
+      username: raw,
+      url: `mailto:${raw}`,
+    };
+  }
+
+  const url = parseLink(raw);
+  if (!url) return null;
+
+  const host = url.hostname.toLowerCase().replace(/^www\./, '');
+  const firstSegment = firstPathSegment(url);
+  const exactUrl = `${url.protocol}//${url.host}${url.pathname}`.replace(/\/$/, '');
+
+  if (host === 'github.com' && firstSegment && !['login', 'settings', 'orgs', 'topics', 'marketplace', 'features'].includes(firstSegment)) {
+    return {
+      platform: PLATFORMS.github,
+      username: firstSegment,
+      url: getProfileUrl('github', firstSegment),
+    };
+  }
+
+  if (host.endsWith('linkedin.com') && firstSegment === 'in') {
+    const username = remainingPath(url);
+    if (username) {
+      return {
+        platform: PLATFORMS.linkedin,
+        username,
+        url: getProfileUrl('linkedin', username),
+      };
+    }
+  }
+
+  if ((host === 'x.com' || host === 'twitter.com') && firstSegment && !['home', 'explore', 'intent', 'share', 'search'].includes(firstSegment)) {
+    return {
+      platform: PLATFORMS.twitter,
+      username: firstSegment,
+      url: getProfileUrl('twitter', firstSegment),
+    };
+  }
+
+  if (host === 'gitlab.com' && firstSegment) {
+    return {
+      platform: PLATFORMS.gitlab,
+      username: firstSegment,
+      url: getProfileUrl('gitlab', firstSegment),
+    };
+  }
+
+  if (host === 'instagram.com' && firstSegment && !['p', 'reel', 'reels', 'stories', 'explore'].includes(firstSegment)) {
+    return {
+      platform: PLATFORMS.instagram,
+      username: firstSegment,
+      url: getProfileUrl('instagram', firstSegment),
+    };
+  }
+
+  if ((host === 'youtube.com' || host === 'youtu.be') && firstSegment.startsWith('@')) {
+    const username = firstSegment.slice(1);
+    if (username) {
+      return {
+        platform: PLATFORMS.youtube,
+        username,
+        url: getProfileUrl('youtube', username),
+      };
+    }
+  }
+
+  if (host === 'twitch.tv' && firstSegment) {
+    return {
+      platform: PLATFORMS.twitch,
+      username: firstSegment,
+      url: getProfileUrl('twitch', firstSegment),
+    };
+  }
+
+  if (host === 'behance.net' && firstSegment) {
+    return {
+      platform: PLATFORMS.behance,
+      username: firstSegment,
+      url: getProfileUrl('behance', firstSegment),
+    };
+  }
+
+  if (host === 'dribbble.com' && firstSegment) {
+    return {
+      platform: PLATFORMS.dribbble,
+      username: firstSegment,
+      url: getProfileUrl('dribbble', firstSegment),
+    };
+  }
+
+  if (host === 'figma.com' && firstSegment === '@') {
+    const username = remainingPath(url);
+    if (username) {
+      return {
+        platform: PLATFORMS.figma,
+        username,
+        url: getProfileUrl('figma', username),
+      };
+    }
+  }
+
+  if (host === 'devfolio.co' && firstSegment.startsWith('@')) {
+    const username = firstSegment.slice(1);
+    if (username) {
+      return {
+        platform: PLATFORMS.devfolio,
+        username,
+        url: getProfileUrl('devfolio', username),
+      };
+    }
+  }
+
+  if (host === 'www.npmjs.com' || host === 'npmjs.com') {
+    if (firstSegment.startsWith('~')) {
+      const username = firstSegment.slice(1) || remainingPath(url);
+      if (username) {
+        return {
+          platform: PLATFORMS.npm,
+          username,
+          url: getProfileUrl('npm', username),
+        };
+      }
+    }
+  }
+
+  if (host === 'dev.to' && firstSegment) {
+    return {
+      platform: PLATFORMS.devto,
+      username: firstSegment,
+      url: getProfileUrl('devto', firstSegment),
+    };
+  }
+
+  if (host === 'hashnode.com' && firstSegment.startsWith('@')) {
+    const username = firstSegment.slice(1);
+    if (username) {
+      return {
+        platform: PLATFORMS.hashnode,
+        username,
+        url: getProfileUrl('hashnode', username),
+      };
+    }
+  }
+
+  if (host === 'medium.com' && firstSegment.startsWith('@')) {
+    const username = firstSegment.slice(1);
+    if (username) {
+      return {
+        platform: PLATFORMS.medium,
+        username,
+        url: getProfileUrl('medium', username),
+      };
+    }
+  }
+
+  if (host === 'leetcode.com' && firstSegment === 'u') {
+    const username = remainingPath(url);
+    if (username) {
+      return {
+        platform: PLATFORMS.leetcode,
+        username,
+        url: getProfileUrl('leetcode', username),
+      };
+    }
+  }
+
+  if (host === 'hackerrank.com' && firstSegment === 'profile') {
+    const username = remainingPath(url);
+    if (username) {
+      return {
+        platform: PLATFORMS.hackerrank,
+        username,
+        url: getProfileUrl('hackerrank', username),
+      };
+    }
+  }
+
+  if (host === 'stackoverflow.com' && firstSegment === 'users') {
+    const username = remainingPath(url);
+    if (username) {
+      return {
+        platform: PLATFORMS.stackoverflow,
+        username,
+        url: getProfileUrl('stackoverflow', username),
+      };
+    }
+  }
+
+  if ((host === 't.me' || host === 'telegram.me') && firstSegment) {
+    return {
+      platform: PLATFORMS.telegram,
+      username: firstSegment,
+      url: getProfileUrl('telegram', firstSegment),
+    };
+  }
+
+  return {
+    platform: PLATFORMS.custom,
+    username: exactUrl,
+    url: exactUrl,
+  };
 }

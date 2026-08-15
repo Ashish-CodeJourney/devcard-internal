@@ -80,6 +80,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       maxAge: 10 * 60,
     });
 
+    if (state.startsWith('mobile_') && app.hasDecorator('redis')) {
+      await app.redis.set(`oauth_state:${state}`, '1', 'EX', 10 * 60);
+    }
+
     const params = new URLSearchParams({
       client_id: clientId, 
       redirect_uri: redirectUri,
@@ -101,7 +105,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: 'Invalid callback parameters' });
     }
     const { code, state } = parsed.data;
-    if (!storedState || state !== storedState) {
+
+    const redisState = state.startsWith('mobile_') && app.hasDecorator('redis')
+      ? await app.redis.getdel(`oauth_state:${state}`)
+      : null;
+
+    if ((!storedState || state !== storedState) && !redisState) {
       reply.clearCookie('oauth_state', { path: '/' });
       return reply.status(400).send({ error: 'Invalid or missing OAuth state — possible CSRF attack' });
     }
@@ -297,6 +306,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       path: '/',
       maxAge: 10 * 60,
     });
+
+    if (state.startsWith('mobile_') && app.hasDecorator('redis')) {
+      await app.redis.set(`oauth_state:${state}`, '1', 'EX', 10 * 60);
+    }
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -321,7 +334,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
     const { code, state } = parsed.data;
 
-    if (!storedState || state !== storedState) {
+    const redisState = state.startsWith('mobile_') && app.hasDecorator('redis')
+      ? await app.redis.getdel(`oauth_state:${state}`)
+      : null;
+
+    if ((!storedState || state !== storedState) && !redisState) {
       reply.clearCookie('oauth_state', { path: '/' });
       return reply.status(400).send({ error: 'Invalid or missing OAuth state — possible CSRF attack' });
     }

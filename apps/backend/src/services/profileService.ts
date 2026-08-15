@@ -1,4 +1,4 @@
-import { getProfileUrl } from '@devcard/shared'
+import { detectPlatformFromUrl, getProfileUrl } from '@devcard/shared'
 
 import { getErrorMessage } from '../utils/error.util.js'
 
@@ -50,16 +50,40 @@ export async function updateProfile(app: FastifyInstance, userId: string, data: 
 }
 
 export async function createPlatformLink(app: FastifyInstance, userId: string, linkData: any) {
-  const url = linkData.url || getProfileUrl(linkData.platform, linkData.username)
+  const detected = linkData.url ? detectPlatformFromUrl(linkData.url) : null
+  const platform = linkData.platform || detected?.platform.id || 'custom'
+  const username = linkData.username || detected?.username || deriveUsernameFromUrl(linkData.url)
+  const url = linkData.url || (platform && username ? getProfileUrl(platform, username) : '')
+
+  if (!platform || !username || !url) {
+    throw Object.assign(new Error('Invalid platform link'), { code: 'LINK_DETECTION_FAILED' })
+  }
+
   const maxOrder = await app.prisma.platformLink.aggregate({ where: { userId }, _max: { displayOrder: true } })
-  return app.prisma.platformLink.create({ data: { userId, platform: linkData.platform, username: linkData.username, url, displayOrder: (maxOrder._max.displayOrder ?? -1) + 1 } })
+  return app.prisma.platformLink.create({ data: { userId, platform, username, url, displayOrder: (maxOrder._max.displayOrder ?? -1) + 1 } })
 }
 
 export async function updatePlatformLink(app: FastifyInstance, userId: string, id: string, linkData: any) {
   const existing = await app.prisma.platformLink.findFirst({ where: { id, userId } })
   if (!existing) {return null}
-  const url = linkData.url || getProfileUrl(linkData.platform, linkData.username)
-  return app.prisma.platformLink.update({ where: { id }, data: { platform: linkData.platform, username: linkData.username, url } })
+  const detected = linkData.url ? detectPlatformFromUrl(linkData.url) : null
+  const platform = linkData.platform || detected?.platform.id || existing.platform
+  const username = linkData.username || detected?.username || existing.username
+  const url = linkData.url || getProfileUrl(platform, username)
+
+  return app.prisma.platformLink.update({ where: { id }, data: { platform, username, url } })
+}
+
+function deriveUsernameFromUrl(urlString: string): string {
+  try {
+    const url = new URL(urlString);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const lastPart = pathParts[pathParts.length - 1];
+    if (lastPart) return lastPart;
+    return url.hostname.replace(/^www\./, '');
+  } catch {
+    return urlString;
+  }
 }
 
 export async function deletePlatformLink(app: FastifyInstance, userId: string, id: string) {

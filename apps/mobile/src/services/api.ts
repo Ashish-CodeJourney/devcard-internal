@@ -185,6 +185,24 @@ function handleDemoRequest<T>(path: string, method: RequestOptions['method'], bo
     return { url: `https://devcard.app/u/${demoState.profile.username}`, username: demoState.profile.username } as T;
   }
 
+  if (path.startsWith('/api/public/card/') && method === 'GET') {
+    const id = path.split('/')[4];
+    const card = demoState.cards.find((item) => item.id === id);
+    if (!card) return null as T;
+    return {
+      id: card.id,
+      title: card.title,
+      owner: {
+        username: demoState.profile.username,
+        displayName: demoState.profile.displayName,
+        bio: demoState.profile.bio,
+        avatarUrl: demoState.profile.avatarUrl,
+        accentColor: demoState.profile.accentColor,
+      },
+      links: demoState.links,
+    } as T;
+  }
+
   if (path.startsWith('/api/u/') && method === 'GET') {
     const username = path.split('/')[3];
     return {
@@ -245,8 +263,8 @@ export async function apiRequest<T>(
   }
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(body ? { 'Content-Type': 'application/json' } : {}),
   };
 
   const res = await fetch(`${API_BASE_URL}${path}`, {

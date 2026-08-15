@@ -25,13 +25,21 @@ export const updateCardSchema = z
     description: z.string().min(1).max(100).optional(),
     visibility: z.nativeEnum(CardVisibility).optional(),
     qrEnabled: z.boolean().optional(),
+    linkIds: z
+      .array(z.string().uuid())
+      .nonempty({ message: 'At least one link is required' })
+      .refine((ids) => new Set(ids).size === ids.length, {
+        message: 'Duplicate links are not allowed',
+      })
+      .optional(),
   })
   .refine(
     (data) =>
       data.title !== undefined ||
       data.description !== undefined ||
       data.visibility !== undefined ||
-      data.qrEnabled !== undefined,
+      data.qrEnabled !== undefined ||
+      data.linkIds !== undefined,
     {
       message: 'At least one field must be provided',
     }

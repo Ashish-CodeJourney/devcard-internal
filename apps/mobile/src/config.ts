@@ -1,15 +1,8 @@
-import { Platform } from 'react-native';
-
 // ── DevCard API Configuration ─────────────────────────────────────────────────
-// Environment-aware URLs with no Expo dependency. On Android emulators the
-// loopback address is 10.0.2.2; on iOS simulators localhost works directly.
-
-const ANDROID_LOCALHOST = '10.0.2.2';
-const IOS_LOCALHOST = 'localhost';
-const DEV_HOST = Platform.OS === 'android' ? ANDROID_LOCALHOST : IOS_LOCALHOST;
+// Use localhost consistently with adb reverse on Android emulators.
 
 export const API_BASE_URL: string = __DEV__
-  ? `http://${DEV_HOST}:3000`
+  ? 'http://localhost:3000'
   : 'https://api.devcard.dev';
 
 export const APP_URL: string = __DEV__

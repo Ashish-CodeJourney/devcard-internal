@@ -29,7 +29,7 @@ export type MainTabsParamList = {
   Home: undefined;
   Contacts: undefined;
   Scan: undefined;
-  Cards: undefined;
+  Cards: { cardId?: string } | undefined;
   Profile: undefined;
 };
 

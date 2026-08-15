@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import QRCode from 'react-native-qrcode-svg';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../theme/tokens';
@@ -23,11 +23,15 @@ import { PLATFORMS } from '@devcard/shared';
 import { get, post, del, put } from '../services/api';
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
+import type { MainTabsParamList } from '../navigation/MainTabs';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { RouteProp } from '@react-navigation/native';
 
 interface PlatformLink {
   id: string;
   platform: string;
   username: string;
+  url: string;
 }
 
 interface Card {
@@ -46,10 +50,17 @@ const CARD_DEEP_LINKS_KEY = 'devcard.cardDeepLinks';
 export default function CardsScreen() {
   const { token } = useAuth();
   const { colors, isDark } = useTheme();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabsParamList, 'Cards'>>();
+  const route = useRoute<RouteProp<MainTabsParamList, 'Cards'>>();
   const themed = React.useMemo(() => createCardsThemedStyles(colors), [colors]);
   const [cards, setCards] = useState<Card[]>([]);
   const [allLinks, setAllLinks] = useState<PlatformLink[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editLinkIds, setEditLinkIds] = useState<string[]>([]);
+  const [savingCard, setSavingCard] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDeepLink, setNewDeepLink] = useState('');
   const [selectedLinkIds, setSelectedLinkIds] = useState<string[]>([]);
@@ -173,31 +184,72 @@ export default function CardsScreen() {
   };
 
   const onCardPress = (card: Card) => {
-    const deepLink = cardDeepLinks[card.id];
-    if (!deepLink) {
-      Alert.alert('No link', 'No deep link added for this card yet.');
+    setSelectedCard(card);
+    setEditTitle(card.title);
+    setEditLinkIds(card.links.map(link => link.id));
+    setShowQrModal(true);
+  };
+
+  const closeQrModal = () => {
+    setShowQrModal(false);
+    setSelectedCard(null);
+    setEditTitle('');
+    setEditLinkIds([]);
+    setSavingCard(false);
+    navigation.setParams({ cardId: undefined });
+  };
+
+  const getCardQrUrl = useCallback((cardId: string) => `devcard://card/${cardId}`, []);
+
+  const saveCardEdits = async () => {
+    if (!selectedCard) return;
+    if (!editTitle.trim()) {
+      Alert.alert('Error', 'Please enter a card title');
+      return;
+    }
+    if (editLinkIds.length === 0) {
+      Alert.alert('Error', 'Please select at least one link');
       return;
     }
 
-    Alert.alert(
-      'Open card link?',
-      `Do you want to open the link for "${card.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open',
-          onPress: async () => {
-            const canOpen = await Linking.canOpenURL(deepLink).catch(() => false);
-            if (!canOpen) {
-              Alert.alert('Unable to open', 'This link cannot be opened on this device.');
-              return;
-            }
-            await Linking.openURL(deepLink);
-          },
-        },
-      ],
-    );
+    setSavingCard(true);
+    try {
+      await put(`/api/cards/${selectedCard.id}`, {
+        title: editTitle.trim(),
+        linkIds: editLinkIds,
+      }, token);
+      await fetchData(false);
+      setSelectedCard(prev => prev ? {
+        ...prev,
+        title: editTitle.trim(),
+        links: allLinks.filter(link => editLinkIds.includes(link.id)),
+      } : prev);
+      Alert.alert('Saved', 'Card updated successfully');
+    } catch {
+      Alert.alert('Error', 'Failed to update card');
+    } finally {
+      setSavingCard(false);
+    }
   };
+
+  const toggleEditLink = (linkId: string) => {
+    setEditLinkIds(prev => (
+      prev.includes(linkId) ? prev.filter(id => id !== linkId) : [...prev, linkId]
+    ));
+  };
+
+  useEffect(() => {
+    const cardId = route.params?.cardId;
+    if (!cardId || showQrModal) return;
+
+    const card = cards.find(item => item.id === cardId);
+    if (card) {
+      setSelectedCard(card);
+      setEditTitle(card.title);
+      setEditLinkIds(card.links.map(link => link.id));
+      setShowQrModal(true);
+    }
+  }, [cards, route.params?.cardId, showQrModal]);
 
   const toggleLink = (linkId: string) => {
     setSelectedLinkIds(prev =>
@@ -274,7 +326,7 @@ export default function CardsScreen() {
                   </View>
                 ) : <View />}
                 <TouchableOpacity onPress={() => setDefault(item.id)}>
-                  <Text style={styles.editText}>Edit</Text>
+                  <Text style={styles.editText}>{item.isDefault ? 'Default' : 'Set default'}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -288,20 +340,14 @@ export default function CardsScreen() {
                   </Text>
                   <Text style={themed.platformCount}>{(item.links ?? []).length} platforms</Text>
                 </View>
-                {cardDeepLinks[item.id] ? (
-                  <View style={styles.qrContainer}>
-                    <QRCode
-                      value={cardDeepLinks[item.id]}
-                      size={72}
-                      color="#111827"
-                      backgroundColor={COLORS.white}
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.qrPlaceholder}>
-                    <Text style={styles.qrPlaceholderText}>No QR link</Text>
-                  </View>
-                )}
+                <View style={styles.qrContainer}>
+                  <QRCode
+                    value={getCardQrUrl(item.id)}
+                    size={72}
+                    color="#111827"
+                    backgroundColor={COLORS.white}
+                  />
+                </View>
               </View>
             </TouchableOpacity>
 
@@ -385,6 +431,73 @@ export default function CardsScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showQrModal} animationType="fade" transparent>
+        <View style={styles.qrModalOverlay}>
+          <View style={[styles.qrModal, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+            <View style={styles.qrModalHeader}>
+              <View>
+                <Text style={[styles.qrModalTitle, { color: colors.textPrimary }]}>{selectedCard?.title || 'Card'}</Text>
+                <Text style={[styles.qrModalSubtitle, { color: colors.textMuted }]}>Scan to open the card and choose a profile</Text>
+              </View>
+              <TouchableOpacity onPress={closeQrModal} style={styles.qrCloseBtn}>
+                <Text style={[styles.qrCloseText, { color: colors.textPrimary }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.qrPreviewWrap}>
+              <View style={styles.qrPreviewCard}>
+                <QRCode
+                  value={selectedCard ? getCardQrUrl(selectedCard.id) : ''}
+                  size={240}
+                  color="#111827"
+                  backgroundColor={COLORS.white}
+                />
+                <Text style={[styles.qrUrl, { color: colors.textMuted }]} numberOfLines={2}>
+                  {selectedCard ? getCardQrUrl(selectedCard.id) : ''}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.editSection}>
+              <Text style={styles.editSectionLabel}>Edit Card</Text>
+              <TextInput
+                style={themed.input}
+                placeholder="Card title"
+                placeholderTextColor={colors.textMuted}
+                value={editTitle}
+                onChangeText={setEditTitle}
+              />
+
+              <Text style={styles.selectLabel}>Select links to include:</Text>
+              <View style={styles.editLinksList}>
+                {allLinks.map(link => (
+                  <TouchableOpacity
+                    key={link.id}
+                    style={[themed.linkOption, editLinkIds.includes(link.id) && styles.linkSelected]}
+                    onPress={() => toggleEditLink(link.id)}>
+                    <View style={[styles.dot, { backgroundColor: PLATFORMS[link.platform]?.color || COLORS.primary }]} />
+                    <Text style={themed.linkOptionText}>
+                      {PLATFORMS[link.platform]?.name || link.platform} — {link.username}
+                    </Text>
+                    {editLinkIds.includes(link.id) && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                ))}
+                {allLinks.length === 0 && (
+                  <View style={styles.noLinksHint}>
+                    <Text style={styles.noLinksHintText}>You haven't added any links yet.</Text>
+                    <Text style={styles.noLinksHintSubtext}>Go to the "Links" tab to add GitHub, LinkedIn, etc.</Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity style={styles.submitBtn} onPress={saveCardEdits} disabled={savingCard}>
+                <Text style={styles.submitBtnText}>{savingCard ? 'Saving...' : 'Save Changes'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -420,6 +533,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
+  qrModalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'center', alignItems: 'center', padding: SPACING.lg },
   modalContent: {
     backgroundColor: COLORS.bgSecondary, borderTopLeftRadius: BORDER_RADIUS.xl,
     borderTopRightRadius: BORDER_RADIUS.xl, padding: SPACING.lg, maxHeight: '80%',
@@ -527,20 +641,66 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.sm,
     padding: SPACING.xs,
   },
-  qrPlaceholder: {
-    width: 80,
-    height: 80,
+  qrModal: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1,
+    padding: SPACING.lg,
+  },
+  qrModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.lg,
+  },
+  qrModalTitle: {
+    fontSize: FONT_SIZE.xl,
+    fontWeight: '800',
+  },
+  qrModalSubtitle: {
+    fontSize: FONT_SIZE.sm,
+    marginTop: 4,
+  },
+  qrCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: BORDER_RADIUS.sm,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: COLORS.border,
+    backgroundColor: COLORS.bgCard,
   },
-  qrPlaceholderText: {
-    color: COLORS.textMuted,
+  qrCloseText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: '800',
+  },
+  qrPreviewWrap: {
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  qrPreviewCard: {
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+  },
+  qrUrl: {
+    marginTop: SPACING.sm,
     fontSize: FONT_SIZE.xs,
     textAlign: 'center',
+    maxWidth: 260,
+  },
+  editSection: {
+    gap: SPACING.sm,
+  },
+  editSectionLabel: {
+    color: COLORS.textPrimary,
+    fontSize: FONT_SIZE.md,
+    fontWeight: '800',
+  },
+  editLinksList: {
+    maxHeight: 240,
+    gap: SPACING.xs,
   },
   cardName: {
     fontSize: 34,

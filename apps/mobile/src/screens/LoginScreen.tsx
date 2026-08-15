@@ -9,18 +9,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../theme/tokens';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, OAUTH_REDIRECT_URI } from '../config';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen() {
   const { enterDemoMode } = useAuth();
 
   const handleGitHubLogin = () => {
-    Linking.openURL(`${API_BASE_URL}/auth/github?state=mobile_github`);
+    Linking.openURL(
+      `${API_BASE_URL}/auth/github?state=mobile_github&mobile_redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}`,
+    );
   };
 
   const handleGoogleLogin = () => {
-    Linking.openURL(`${API_BASE_URL}/auth/google?state=mobile_google`);
+    Linking.openURL(
+      `${API_BASE_URL}/auth/google?state=mobile_google&mobile_redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}`,
+    );
   };
 
   return (
