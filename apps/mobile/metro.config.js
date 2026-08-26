@@ -17,4 +17,6 @@ config.resolver.nodeModulesPaths = [
 
 config.resolver.disableHierarchicalLookup = true;
 
+config.resolver.blockList = [/\.cxx\/.*/];
+
 module.exports = config;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getProfileUrl, getWebViewUrl, getDeepLinkUrl } from '../platforms';
+import { detectPlatformFromUrl, getProfileUrl, getWebViewUrl, getDeepLinkUrl } from '../platforms';
 
 // ─── getProfileUrl Tests ───
 
@@ -58,5 +58,44 @@ describe('getDeepLinkUrl', () => {
 
   it('should return null for an unknown platform', () => {
     expect(getDeepLinkUrl('nonexistent', 'user')).toBeNull();
+  });
+});
+
+// ─── detectPlatformFromUrl Tests ───
+
+describe('detectPlatformFromUrl', () => {
+  it('should detect GitHub profile URLs', () => {
+    const detected = detectPlatformFromUrl('https://github.com/octocat');
+    expect(detected?.platform.id).toBe('github');
+    expect(detected?.username).toBe('octocat');
+  });
+
+  it('should detect LinkedIn profile URLs', () => {
+    const detected = detectPlatformFromUrl('https://www.linkedin.com/in/john-doe');
+    expect(detected?.platform.id).toBe('linkedin');
+    expect(detected?.username).toBe('john-doe');
+  });
+
+  it('should detect X profile URLs', () => {
+    const detected = detectPlatformFromUrl('https://x.com/john');
+    expect(detected?.platform.id).toBe('twitter');
+    expect(detected?.username).toBe('john');
+  });
+
+  it('should detect npm profile URLs', () => {
+    const detected = detectPlatformFromUrl('https://www.npmjs.com/~sindresorhus');
+    expect(detected?.platform.id).toBe('npm');
+    expect(detected?.username).toBe('sindresorhus');
+  });
+
+  it('should detect email links', () => {
+    const detected = detectPlatformFromUrl('mailto:hello@example.com');
+    expect(detected?.platform.id).toBe('email');
+    expect(detected?.username).toBe('hello@example.com');
+  });
+
+  it('should fall back to custom for unknown links', () => {
+    const detected = detectPlatformFromUrl('https://example.com/profile');
+    expect(detected?.platform.id).toBe('custom');
   });
 });

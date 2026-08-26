@@ -21,6 +21,7 @@ export interface UpdateCardBody{
   description?:string; 
   visibility?: CardVisibility; 
   qrEnabled?: boolean; 
+  linkIds?: string[];
 }
 
 export interface SavedCardResponse {
@@ -156,24 +157,50 @@ export async function updateCard(
   id: string,
   body: UpdateCardBody,
 ): Promise<Card> {
-  const {title, description, visibility, qrEnabled} = body
+  const {title, description, visibility, qrEnabled, linkIds} = body
 
   const existing = await app.prisma.card.findFirst({ where: { id, userId } });
     if (!existing) {
       throw Object.assign(new Error('NotFound'), { code: 'NOT_FOUND' });
     }
 
-  const updated = await app.prisma.card.update({
-      where: {
-        id, 
+  if (linkIds) {
+    const ownedLinks = await app.prisma.platformLink.findMany({
+      where: { id: { in: linkIds }, userId },
+      select: { id: true },
+    });
+
+    if (ownedLinks.length !== linkIds.length) {
+      throw Object.assign(new Error('Link ownership mismatch'), { code: 'OWNERSHIP' });
+    }
+  }
+
+  const updated = await app.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const card = await tx.card.update({
+      where: { id },
+      data: {
+        title,
+        description,
+        visibility,
+        qrEnabled,
       },
-      data:{
-        title, 
-        description, 
-        visibility, 
-        qrEnabled
+    });
+
+    if (linkIds) {
+      await tx.cardLink.deleteMany({ where: { cardId: id } });
+      if (linkIds.length > 0) {
+        await tx.cardLink.createMany({
+          data: linkIds.map((platformLinkId, displayOrder) => ({
+            cardId: id,
+            platformLinkId,
+            displayOrder,
+          })),
+        });
       }
-  })
+    }
+
+    return card;
+  });
 
   return updated;
 }

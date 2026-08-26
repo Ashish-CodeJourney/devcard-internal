@@ -20,18 +20,32 @@ export const updateProfileSchema = z.object({
 });
 
 export const createLinkSchema = z.object({
-  platform: z.string().min(1),
-  username: z.string().min(1).max(200),
+  platform: z.string().min(1).optional(),
   url: z.string().url().optional(),
+  username: z.string().min(1).max(200).optional(),
 }).superRefine((data, ctx) => {
-  const platformDef = getPlatform(data.platform);
-  if (platformDef?.validationRegex) {
-    if (!platformDef.validationRegex.test(data.username)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Invalid format for ${platformDef.name} handle`,
-        path: ['username'],
-      });
+  const hasUrl = Boolean(data.url);
+  const hasPlatformAndUsername = Boolean(data.platform && data.username);
+
+  if (!hasUrl && !hasPlatformAndUsername) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Provide a profile URL or a platform and username',
+      path: ['url'],
+    });
+    return;
+  }
+
+  if (data.platform && data.username) {
+    const platformDef = getPlatform(data.platform);
+    if (platformDef?.validationRegex) {
+      if (!platformDef.validationRegex.test(data.username)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Invalid format for ${platformDef.name} handle`,
+          path: ['username'],
+        });
+      }
     }
   }
 });

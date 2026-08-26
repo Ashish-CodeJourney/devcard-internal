@@ -9,6 +9,7 @@ import AuthStack from './src/navigation/AuthStack';
 import MainTabs from './src/navigation/MainTabs';
 import SplashScreen from './src/screens/SplashScreen';
 import { DEEP_LINK_SCHEME } from './src/config';
+import { post } from './src/services/api';
 
 import { Linking, StyleSheet } from 'react-native';
 
@@ -22,6 +23,7 @@ const linking: LinkingOptions<{}> = {
         screens: {
           Home: 'home',
           Scan: 'scan',
+          Cards: 'card/:cardId',
         },
       },
       DevCardView: 'u/:username',
@@ -35,13 +37,27 @@ function AppContent() {
   const { isAuthenticated, isLoading, login } = useAuth();
 
   React.useEffect(() => {
-    const handleDeepLink = (event: { url: string }) => {
+    const handleDeepLink = async (event: { url: string }) => {
       try {
         const url = new URL(event.url);
         const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
         const token = url.searchParams.get('token') || hashParams.get('token');
+        const code = url.searchParams.get('code') || hashParams.get('code');
+
         if (token) {
-          login(token);
+          await login(token);
+          return;
+        }
+
+        if (code) {
+          const tokens = await post<{ accessToken: string; refreshToken: string }>(
+            '/auth/mobile/exchange',
+            { code },
+          );
+
+          if (tokens?.accessToken) {
+            await login(tokens.accessToken);
+          }
         }
       } catch (error) {
         console.error('Deep link parse error:', error);
