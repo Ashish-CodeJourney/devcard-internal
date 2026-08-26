@@ -4,6 +4,10 @@
   "private": true,
   "description": "One Tap. Every Profile. Every Platform. Open Source Developer Profile Exchange Platform.",
   "license": "Apache-2.0",
+    "workspaces": [
+    "apps/*",
+    "packages/*"
+  ], 
   "scripts": {
     "dev:backend": "npm --prefix apps/backend run dev",
     "dev:mobile": "npm --prefix apps/mobile run start",
