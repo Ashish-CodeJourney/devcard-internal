@@ -93,6 +93,9 @@ model PlatformLink {
   displayOrder Int      @default(0) @map("display_order")
   createdAt    DateTime @default(now()) @map("created_at")
 
+  verified     Boolean  @default(false)
+  verifiedAt   DateTime?
+
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   cardLinks CardLink[]
 
