@@ -10,6 +10,21 @@ export const updateProfileSchema = z.object({
     .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, hyphens, and underscores')
     .optional(),
   bio: z.string().max(300).nullable().optional(),
+  // Accepts either a hosted http(s) image URL, or an on-device upload encoded
+  // as a base64 data URI (downscaled client-side). Any image/* subtype is
+  // allowed so platform-specific formats (e.g. image/heic) are not rejected.
+  // Capped to keep list/detail responses and the profile cache reasonable.
+  avatarUrl: z
+    .string()
+    .max(400000, 'Avatar image is too large')
+    .refine(
+      value =>
+        /^https?:\/\/\S+$/i.test(value) ||
+        /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/]+={0,2}$/i.test(value),
+      { message: 'Avatar must be an http(s) URL or an uploaded image' },
+    )
+    .nullable()
+    .optional(),
   pronouns: z.string().max(50).nullable().optional(),
   role: z.string().max(100).nullable().optional(),
   company: z.string().max(100).nullable().optional(),
@@ -17,7 +32,7 @@ export const updateProfileSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color')
     .optional(),
-});
+}).strict(); // Unknown fields must error rather than being silently dropped.
 
 export const createLinkSchema = z.object({
   platform: z.string().min(1).optional(),
