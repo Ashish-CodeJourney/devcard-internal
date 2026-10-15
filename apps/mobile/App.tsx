@@ -11,7 +11,7 @@ import SplashScreen from './src/screens/SplashScreen';
 import { DEEP_LINK_SCHEME } from './src/config';
 import { post } from './src/services/api';
 
-import { Linking, StyleSheet } from 'react-native';
+import { Linking, StyleSheet, Alert } from 'react-native';
 
 // ── Deep Link Configuration ───────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ const linking: LinkingOptions<{}> = {
 // ── App Content ───────────────────────────────────────────────────────────────
 
 function AppContent() {
-  const { isAuthenticated, isLoading, login } = useAuth();
+  const { isAuthenticated, isLoading, login, refreshUser } = useAuth();
 
   React.useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
@@ -43,6 +43,22 @@ function AppContent() {
         const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
         const token = url.searchParams.get('token') || hashParams.get('token');
         const code = url.searchParams.get('code') || hashParams.get('code');
+        const error = url.searchParams.get('error') || hashParams.get('error');
+        const verification = url.searchParams.get('verification');
+
+        // Platform-link verification returns from the provider's browser.
+        if (verification) {
+          await refreshUser();
+          Alert.alert('Verified', `Your ${verification} account is now verified.`);
+          return;
+        }
+
+        // The backend returns sign-in failures to the app as ?error=… so the
+        // user gets a readable reason instead of a dead end in the browser.
+        if (error) {
+          Alert.alert('Sign-in failed', decodeURIComponent(error));
+          return;
+        }
 
         if (token) {
           await login(token);
@@ -73,7 +89,7 @@ function AppContent() {
     return () => {
       subscription.remove();
     };
-  }, [login]);
+  }, [login, refreshUser]);
 
   if (isLoading) {
     return <SplashScreen />;
