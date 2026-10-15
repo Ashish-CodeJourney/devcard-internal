@@ -105,13 +105,13 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     // dead-end JSON page in the system browser — so the user sees a real error.
     const mobileReturn = getMobileRedirectUri(rawState);
     const fail = (message: string, status = 400) => {
-      // HTTP header values must be ASCII; strip anything else before it goes
-      // into the Location header, otherwise Node throws ERR_INVALID_CHAR.
-      const safe = message.replace(/[^\x20-\x7E]/g, '');
       if (mobileReturn) {
+        // HTTP header values must be ASCII, otherwise Node throws
+        // ERR_INVALID_CHAR when building the Location header.
+        const safe = message.replace(/[^\x20-\x7E]/g, '');
         return reply.redirect(`${mobileReturn}?error=${encodeURIComponent(safe)}`);
       }
-      return reply.status(status).send({ error: safe });
+      return reply.status(status).send({ error: message });
     };
 
     const parsed = oAuthCallbackSchema.safeParse(request.query);
@@ -199,7 +199,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           data: {
             email,
             displayName: githubUser.name || baseUsername,
-            avatarUrl: githubUser.avatar_url,
+            // Deliberately NOT syncing avatarUrl here: re-login must not clobber
+            // an avatar the user uploaded or chose themselves.
             lastSignInAt: new Date(),
             isActive: true
           },
@@ -342,11 +343,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     const mobileReturn = getMobileRedirectUri(rawState);
     const fail = (message: string, status = 400) => {
-      const safe = message.replace(/[^\x20-\x7E]/g, '');
       if (mobileReturn) {
+        const safe = message.replace(/[^\x20-\x7E]/g, '');
         return reply.redirect(`${mobileReturn}?error=${encodeURIComponent(safe)}`);
       }
-      return reply.status(status).send({ error: safe });
+      return reply.status(status).send({ error: message });
     };
 
     const parsed = oAuthCallbackSchema.safeParse(request.query);
@@ -362,7 +363,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     if ((!storedState || state !== storedState) && !redisState) {
       reply.clearCookie('oauth_state', { path: '/' });
-      return fail('Invalid or missing OAuth state - possible CSRF attack');
+      return fail('Invalid or missing OAuth state — possible CSRF attack');
     }
     reply.clearCookie('oauth_state', { path: '/' });
 
@@ -412,7 +413,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           data: {
             email: googleUser.email,
             displayName: googleUser.name || baseUsername,
-            avatarUrl: googleUser.picture,
+            // Deliberately NOT syncing avatarUrl here: re-login must not clobber
+            // an avatar the user uploaded or chose themselves.
             lastSignInAt: new Date(),
             isActive: true
           },
