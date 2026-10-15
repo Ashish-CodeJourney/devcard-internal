@@ -25,6 +25,39 @@ jest.mock('react-native-webview', () => ({
 
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
 
+jest.mock('react-native-camera-kit', () => ({
+  Camera: 'Camera',
+}));
+
+jest.mock('react-native-image-picker', () => ({
+  launchImageLibrary: jest.fn(() => Promise.resolve({ didCancel: true })),
+  launchCamera: jest.fn(() => Promise.resolve({ didCancel: true })),
+}));
+
+// react-native-svg has no bundled Jest mock; render its primitives as views.
+jest.mock('react-native-svg', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const primitive = name => props => React.createElement(View, props, props.children);
+  return {
+    __esModule: true,
+    default: primitive('Svg'),
+    Svg: primitive('Svg'),
+    Defs: primitive('Defs'),
+    LinearGradient: primitive('LinearGradient'),
+    RadialGradient: primitive('RadialGradient'),
+    Stop: primitive('Stop'),
+    Rect: primitive('Rect'),
+    Circle: primitive('Circle'),
+    Ellipse: primitive('Ellipse'),
+    G: primitive('G'),
+    Path: primitive('Path'),
+    Line: primitive('Line'),
+    Polygon: primitive('Polygon'),
+    Text: primitive('SvgText'),
+  };
+});
+
 jest.mock('react-native-reanimated', () => ({
   __esModule: true,
   default: {

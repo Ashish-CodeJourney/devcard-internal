@@ -1,148 +1,159 @@
 import React from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
-  Dimensions,
+  ScrollView,
+  Pressable,
   StatusBar,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../theme/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { authPalette } from '../theme/authTheme';
+import { AuthHero } from '../components/AuthHero';
+import { AppText, Icon } from '../components/ui';
+import { SPACING, BORDER_RADIUS } from '../theme/tokens';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../navigation/AuthStack';
-
-const { width } = Dimensions.get('window');
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Onboarding'>;
 };
 
 export default function OnboardingScreen({ navigation }: Props) {
+  const { isDark } = useTheme();
+  const p = authPalette(isDark);
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+
+  // Hero takes the upper ~55% of the screen, clamped so short devices keep
+  // enough room for the panel and tall devices don't overflow.
+  const heroHeight = Math.max(260, Math.min(Math.round(height * 0.55), 460));
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgPrimary} />
+    <View style={[styles.root, { backgroundColor: p.surface }]}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        translucent
+        backgroundColor="transparent"
+      />
 
-      <View style={styles.content}>
-        {/* Hero */}
-        <View style={styles.hero}>
-          <Text style={styles.logo}>⚡</Text>
-          <Text style={styles.title}>DevCard</Text>
-          <Text style={styles.subtitle}>One Tap. Every Profile.{'\n'}Every Platform.</Text>
-        </View>
+      {/* ── Hero ── */}
+      <View style={{ height: heroHeight }}>
+        <AuthHero height={heroHeight} palette={p} isDark={isDark} />
 
-        {/* Features */}
-        <View style={styles.features}>
-          <FeatureItem emoji="🔗" text="All your profiles in one card" />
-          <FeatureItem emoji="📱" text="Scan QR to connect instantly" />
-          <FeatureItem emoji="⚡" text="Follow on GitHub, Connect on LinkedIn — one screen" />
-        </View>
-
-        {/* CTA */}
-        <View style={styles.cta}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('Login')}
-            activeOpacity={0.85}>
-            <Text style={styles.primaryButtonText}>Get Started</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.footnote}>
-            Open source • Privacy-first • Built for developers
-          </Text>
+        <View style={[styles.brandRow, { top: insets.top + SPACING.sm }]} pointerEvents="none">
+          <View style={[styles.brandMark, { backgroundColor: p.heroInk }]}>
+            <Icon name="lightning-bolt" size={14} color={isDark ? '#0B0D0F' : '#FFFFFF'} />
+          </View>
+          <AppText variant="eyebrow" color={p.heroInk} style={styles.brandText}>
+            DEVCARD
+          </AppText>
         </View>
       </View>
-    </SafeAreaView>
-  );
-}
 
-function FeatureItem({ emoji, text }: { emoji: string; text: string }) {
-  return (
-    <View style={styles.featureItem}>
-      <Text style={styles.featureEmoji}>{emoji}</Text>
-      <Text style={styles.featureText}>{text}</Text>
+      {/* ── Panel ── */}
+      <View
+        style={[
+          styles.panel,
+          { backgroundColor: p.surface, borderColor: p.border, marginTop: -28 },
+        ]}>
+        <ScrollView
+          contentContainerStyle={[styles.panelContent, { paddingBottom: insets.bottom + SPACING.lg }]}
+          showsVerticalScrollIndicator={false}>
+          <AppText variant="display" align="center" color={p.text} style={styles.headline}>
+            One tap.{'\n'}
+            <AppText variant="display" color={p.accent}>
+              Every profile.
+            </AppText>
+          </AppText>
+
+          <AppText variant="body" align="center" color={p.textSecondary} style={styles.subtitle}>
+            Build one DevCard and share every platform you create on — GitHub, LinkedIn, X and more.
+          </AppText>
+
+          <View style={styles.spacer} />
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Get started"
+            onPress={() => navigation.navigate('Login')}
+            style={({ pressed }) => [
+              styles.primaryBtn,
+              {
+                backgroundColor: p.buttonBg,
+                opacity: pressed ? 0.88 : 1,
+              },
+            ]}>
+            <AppText variant="button" color={p.buttonText}>
+              Get Started
+            </AppText>
+            <Icon
+              name="arrow-right"
+              size={18}
+              color={p.buttonText}
+              style={styles.primaryBtnIcon}
+            />
+          </Pressable>
+
+          <AppText variant="caption" align="center" color={p.textMuted} style={styles.footnote}>
+            Privacy-first · Built for developers
+          </AppText>
+        </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bgPrimary,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.xl,
-  },
-  hero: {
-    alignItems: 'center',
-    marginTop: SPACING.xxl,
-  },
-  logo: {
-    fontSize: 64,
-    marginBottom: SPACING.md,
-  },
-  title: {
-    fontSize: FONT_SIZE.xxxl,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    letterSpacing: -1,
-  },
-  subtitle: {
-    fontSize: FONT_SIZE.lg,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: SPACING.sm,
-    lineHeight: 26,
-  },
-  features: {
-    gap: SPACING.md,
-  },
-  featureItem: {
+  root: { flex: 1 },
+  brandRow: {
+    position: 'absolute',
+    left: SPACING.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.bgCard,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  featureEmoji: {
-    fontSize: 24,
-    marginRight: SPACING.md,
+  brandMark: {
+    width: 26,
+    height: 26,
+    borderRadius: BORDER_RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  featureText: {
+  brandText: { marginLeft: SPACING.sm, letterSpacing: 3 },
+  panel: {
     flex: 1,
-    fontSize: FONT_SIZE.md,
-    color: COLORS.textPrimary,
-    fontWeight: '500',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
-  cta: {
+  panelContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xxl,
     alignItems: 'center',
-    gap: SPACING.md,
   },
-  primaryButton: {
-    width: width - SPACING.lg * 2,
-    backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.md,
+  headline: {
+    fontSize: 40,
+    lineHeight: 46,
+    ...Platform.select({ android: { includeFontPadding: false } }),
+  },
+  subtitle: {
+    marginTop: SPACING.md,
+    maxWidth: 300,
+  },
+  spacer: { flexGrow: 1, minHeight: SPACING.xl },
+  primaryBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    justifyContent: 'center',
+    width: '100%',
+    height: 56,
+    borderRadius: BORDER_RADIUS.full,
   },
-  primaryButtonText: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  footnote: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-  },
+  primaryBtnIcon: { marginLeft: SPACING.sm },
+  footnote: { marginTop: SPACING.md },
 });

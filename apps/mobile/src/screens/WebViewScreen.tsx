@@ -1,16 +1,17 @@
 import React, { useRef, useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  StatusBar,
-  Linking,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, Linking, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from '../theme/tokens';
-import { Skeleton } from '../components/Skeleton';
+import { useTheme } from '../context/ThemeContext';
+import { SPACING, BORDER_RADIUS, ICON_SIZE } from '../theme/tokens';
+import {
+  Screen,
+  AppText,
+  Button,
+  Icon,
+  Skeleton,
+  Surface,
+  EmptyState,
+} from '../components/ui';
 import { getDeepLinkUrl } from '@devcard/shared';
 import { post } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +40,7 @@ export default function WebViewScreen({ navigation, route }: Props) {
     cardOwnerUsername,
   } = route.params;
 
+  const { colors } = useTheme();
   const { token } = useAuth();
   const platformDisplayName = platformName || platform;
   const webViewRef = useRef<WebView>(null);
@@ -365,37 +367,46 @@ export default function WebViewScreen({ navigation, route }: Props) {
   ` : undefined;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgPrimary} />
-
-      {/* Header Container */}
+    <Screen edges={['top', 'bottom']}>
       <View>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Text style={styles.closeText}>✕ Close</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{platformDisplayName}</Text>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={10}
+            style={[styles.closeBtn, { borderColor: colors.border, backgroundColor: colors.bgSecondary }]}>
+            <Icon name="close" size={ICON_SIZE.sm} color={colors.textPrimary} />
+          </Pressable>
+          <View style={styles.headerTitleWrap}>
+            <AppText variant="eyebrow" tone="muted" numberOfLines={1}>
+              CONNECTING
+            </AppText>
+            <AppText variant="title" numberOfLines={1}>
+              {platformDisplayName}
+            </AppText>
+          </View>
           <View style={styles.headerSpacer} />
         </View>
-        {/* Loading Progress Bar */}
         {progress > 0 && progress < 1 && (
           <View style={[styles.progressBar, {
             width: `${progress * 100}%`,
-            backgroundColor: platform === 'linkedin' ? '#0A66C2' : COLORS.primary
+            backgroundColor: platform === 'linkedin' ? colors.linkedin : colors.accent
           }]} />
         )}
       </View>
 
-      {/* Info Banner */}
-      <View style={styles.banner}>
-        <Text style={styles.bannerText}>
-          You are viewing this profile in <Text style={styles.bannerBold}>DevCard</Text> — tap <Text style={styles.bannerBold}>Connect</Text> on {platformDisplayName} to send your request
-        </Text>
+      <View style={[styles.banner, { backgroundColor: colors.bgCard, borderBottomColor: colors.border }]}>
+        <Icon name="information-outline" size={ICON_SIZE.sm} color={colors.textSecondary} />
+        <AppText variant="caption" tone="secondary" style={styles.bannerText}>
+          You are viewing this profile in <AppText variant="caption" color={colors.accent}>DevCard</AppText> — tap <AppText variant="caption" color={colors.accent}>Connect</AppText> on {platformDisplayName} to send your request
+        </AppText>
       </View>
 
       {successToast && (
-        <View style={styles.toast}>
-          <Text style={styles.toastText}>{successToast}</Text>
+        <View style={[styles.toast, { backgroundColor: colors.successSoft, borderColor: colors.success }]}>
+          <Icon name="check-circle" size={ICON_SIZE.sm} color={colors.success} />
+          <AppText variant="label" tone="success" style={styles.toastText}>{successToast}</AppText>
         </View>
       )}
 
@@ -449,82 +460,96 @@ export default function WebViewScreen({ navigation, route }: Props) {
                 <Skeleton width="92%" height={180} borderRadius={BORDER_RADIUS.lg} style={styles.loadingBlock} />
                 <Skeleton width="78%" height={16} borderRadius={10} style={styles.loadingLine} />
                 <Skeleton width="64%" height={16} borderRadius={10} style={styles.loadingLine} />
-                <Text style={styles.loadingText}>Loading {platformDisplayName}...</Text>
+                <AppText variant="body" tone="muted" style={styles.loadingText}>
+                  Loading {platformDisplayName}...
+                </AppText>
               </View>
             )}
           />
 
-          {/* Premium Fallback Overlay for slow load / timeouts */}
           {showFallbackOverlay && (
-            <View style={styles.overlayContainer}>
-              <View style={styles.overlayCard}>
-                <Text style={styles.overlayIcon}>⏳</Text>
-                <Text style={styles.overlayTitle}>Profile loading is slow</Text>
-                <Text style={styles.overlayDescription}>
+            <View style={[styles.overlayContainer, { backgroundColor: colors.overlay }]}>
+              <Surface variant="elevated" radius="xl" padding="xl" style={styles.overlayCard}>
+                <View style={[styles.overlayIcon, { backgroundColor: colors.warningSoft }]}>
+                  <Icon name="timer-sand" size={ICON_SIZE.lg} color={colors.warning} />
+                </View>
+                <AppText variant="h3" align="center">
+                  Profile loading is slow
+                </AppText>
+                <AppText variant="body" tone="secondary" align="center" style={styles.overlayDescription}>
                   {platformDisplayName} is taking longer than usual to load inside the app. Would you like to open it directly in the native app?
-                </Text>
+                </AppText>
 
-                <TouchableOpacity
-                  style={styles.overlayPrimaryButton}
+                <Button
+                  label={`Open in ${platformDisplayName} App`}
+                  icon="open-in-new"
                   onPress={handleOpenDeepLink}
-                  activeOpacity={0.8}>
-                  <Text style={styles.overlayPrimaryButtonText}>Open in {platformDisplayName} App</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.overlaySecondaryButton}
+                  style={styles.overlayPrimaryButton}
+                />
+                <Button
+                  label="Open in Default Browser"
+                  variant="secondary"
+                  icon="web"
                   onPress={handleOpenBrowser}
-                  activeOpacity={0.8}>
-                  <Text style={styles.overlaySecondaryButtonText}>Open in Default Browser</Text>
-                </TouchableOpacity>
+                  style={styles.overlaySecondaryButton}
+                />
 
                 <View style={styles.overlayRowButtons}>
-                  <TouchableOpacity
-                    style={styles.overlayTextButton}
+                  <Button
+                    label="Retry Loading"
+                    variant="ghost"
+                    size="sm"
+                    fullWidth={false}
                     onPress={handleRetryWebView}
-                    activeOpacity={0.7}>
-                    <Text style={styles.overlayTextButtonText}>Retry Loading</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.overlayTextButton}
+                  />
+                  <Button
+                    label="Cancel"
+                    variant="ghost"
+                    size="sm"
+                    fullWidth={false}
                     onPress={() => navigation.goBack()}
-                    activeOpacity={0.7}>
-                    <Text style={styles.overlayTextButtonText}>Cancel</Text>
-                  </TouchableOpacity>
+                  />
                 </View>
-              </View>
+              </Surface>
             </View>
           )}
         </View>
       ) : (
-        <View style={styles.loading}>
-          <Text style={styles.loadingText}>Invalid profile URL</Text>
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            icon="link-off"
+            title="Invalid profile URL"
+            description="This platform didn't provide a valid link to open."
+          />
         </View>
       )}
 
-      {/* Done Button Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.doneButton}
-          onPress={handleDonePress}
-          activeOpacity={0.8}>
-          <Text style={styles.doneButtonText}>Done</Text>
-        </TouchableOpacity>
+      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.bgSecondary }]}>
+        <Button label="Done" icon="check" onPress={handleDonePress} />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bgPrimary },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.bgSecondary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
   },
-  closeText: { color: COLORS.textSecondary, fontSize: FONT_SIZE.md, fontWeight: '600' },
-  headerTitle: { fontSize: FONT_SIZE.md, fontWeight: '700', color: COLORS.textPrimary },
-  headerSpacer: { width: 60 },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleWrap: { flex: 1, marginLeft: SPACING.sm },
+  headerSpacer: { width: 40, height: 40 },
   progressBar: {
     height: 3,
     position: 'absolute',
@@ -533,24 +558,25 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   banner: {
-    backgroundColor: COLORS.bgCard, padding: SPACING.md,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
   },
-  bannerText: { fontSize: FONT_SIZE.sm, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20 },
-  bannerBold: { fontWeight: '700', color: COLORS.primary },
+  bannerText: { flex: 1, marginLeft: SPACING.sm, lineHeight: 18 },
   toast: {
     position: 'absolute',
-    top: 118,
+    top: 112,
     left: SPACING.md,
     right: SPACING.md,
     zIndex: 20,
-    backgroundColor: COLORS.success,
     borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
     padding: SPACING.md,
+    flexDirection: 'row',
     alignItems: 'center',
-    ...SHADOWS.button,
   },
-  toastText: { color: COLORS.white, fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  toastText: { marginLeft: SPACING.sm },
   webContainer: { flex: 1, position: 'relative' },
   webview: { flex: 1 },
   loading: {
@@ -561,109 +587,56 @@ const styles = StyleSheet.create({
     left: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.bgPrimary,
     padding: SPACING.lg,
     zIndex: 5,
   },
   loadingBlock: { marginTop: SPACING.lg },
   loadingLine: { marginTop: SPACING.md },
-  loadingText: { color: COLORS.textMuted, fontSize: FONT_SIZE.md, marginTop: SPACING.lg },
+  loadingText: { marginTop: SPACING.lg },
+  emptyWrap: { flex: 1, justifyContent: 'center' },
   footer: {
-    padding: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border,
-    backgroundColor: COLORS.bgSecondary,
+    padding: SPACING.md,
+    borderTopWidth: 1,
   },
-  doneButton: {
-    backgroundColor: COLORS.bgElevated, borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md, alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  doneButtonText: { color: COLORS.textPrimary, fontWeight: '700', fontSize: FONT_SIZE.md },
 
-  // Custom Fallback Overlay Styling
   overlayContainer: {
     position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(15, 15, 26, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.lg,
     zIndex: 50,
   },
   overlayCard: {
-    backgroundColor: COLORS.bgSecondary,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.xl,
     width: '100%',
     maxWidth: 340,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.card,
   },
   overlayIcon: {
-    fontSize: 48,
+    width: 72,
+    height: 72,
+    borderRadius: BORDER_RADIUS.full,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: SPACING.md,
   },
-  overlayTitle: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
   overlayDescription: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
+    marginTop: SPACING.sm,
     marginBottom: SPACING.lg,
-    lineHeight: 20,
+    maxWidth: 300,
   },
   overlayPrimaryButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.md,
-    width: '100%',
-    alignItems: 'center',
     marginBottom: SPACING.sm,
-    ...SHADOWS.button,
-  },
-  overlayPrimaryButtonText: {
-    color: COLORS.white,
-    fontWeight: '700',
-    fontSize: FONT_SIZE.md,
   },
   overlaySecondaryButton: {
-    backgroundColor: COLORS.bgElevated,
-    borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.md,
-    width: '100%',
-    alignItems: 'center',
     marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  overlaySecondaryButtonText: {
-    color: COLORS.textPrimary,
-    fontWeight: '600',
-    fontSize: FONT_SIZE.md,
   },
   overlayRowButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: SPACING.sm,
-  },
-  overlayTextButton: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-  },
-  overlayTextButtonText: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.sm,
-    fontWeight: '600',
   },
 });

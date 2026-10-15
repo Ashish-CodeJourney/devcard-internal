@@ -1,13 +1,22 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../theme/tokens';
+import { View, StyleSheet, FlatList } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../services/api';
-import { EmptyState } from '../components/EmptyState';
-import Avatar from '../components/Avatar';
-import { LoadingPlaceholder } from '../components/LoadingPlaceholder';
+import {
+  AppText,
+  Avatar,
+  EmptyState,
+  ErrorState,
+  Icon,
+  ICONS,
+  LoadingRows,
+  Pill,
+  Screen,
+  SectionHeader,
+  Surface,
+} from '../components/ui';
+import { SPACING, BORDER_RADIUS } from '../theme/tokens';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/MainTabs';
 
@@ -15,15 +24,18 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Views'>;
 
 export const ViewsScreen: React.FC<Props> = () => {
   const { token } = useAuth();
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [views, setViews] = useState<any[]>([]);
   const [overview, setOverview] = useState<any>(null);
+  const [error, setError] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!token) {
       setLoading(false);
       return;
     }
+    setError(false);
     try {
       const [viewsData, overviewData] = await Promise.all([
         get<any>('/api/analytics/views', token).catch(() => null),
@@ -31,8 +43,10 @@ export const ViewsScreen: React.FC<Props> = () => {
       ]);
       setViews(viewsData?.data || []);
       setOverview(overviewData);
+      setError(viewsData === null && overviewData === null);
     } catch (error) {
       console.error('Failed to fetch analytics', error);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -77,86 +91,108 @@ export const ViewsScreen: React.FC<Props> = () => {
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{overview?.totalViews || 0}</Text>
-          <Text style={styles.statLabel}>Total Views</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{overview?.followsCount || 0}</Text>
-          <Text style={styles.statLabel}>Connections</Text>
-        </View>
+        <Surface radius="lg" padding="lg" style={styles.statCard}>
+          <AppText variant="h1" tone="accent">
+            {overview?.totalViews || 0}
+          </AppText>
+          <AppText variant="eyebrow" tone="muted" style={styles.statLabel}>
+            TOTAL VIEWS
+          </AppText>
+        </Surface>
+        <Surface radius="lg" padding="lg" style={styles.statCard}>
+          <AppText variant="h1">{overview?.followsCount || 0}</AppText>
+          <AppText variant="eyebrow" tone="muted" style={styles.statLabel}>
+            CONNECTIONS
+          </AppText>
+        </Surface>
       </View>
-      
-      <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Views (Last 7 Days)</Text>
+
+      <Surface radius="lg" padding="lg" style={styles.chartCard}>
+        <AppText variant="eyebrow" tone="muted">
+          LAST 7 DAYS
+        </AppText>
+        <AppText variant="title" style={styles.chartTitle}>
+          Views
+        </AppText>
         <View style={styles.chartContainer}>
           {chartData.data.map((item, idx) => {
             const heightPerc = (item.count / chartData.max) * 100;
             return (
               <View key={idx} style={styles.barWrapper}>
-                <Text style={styles.barLabelTop}>{item.count > 0 ? item.count : ''}</Text>
-                <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { height: `${heightPerc}%` }]} />
+                <AppText variant="caption" tone="accent" style={styles.barLabelTop}>
+                  {item.count > 0 ? item.count : ''}
+                </AppText>
+                <View style={[styles.barTrack, { backgroundColor: colors.bgInset, borderColor: colors.border }]}>
+                  <View style={[styles.barFill, { height: `${heightPerc}%`, backgroundColor: colors.accent }]} />
                 </View>
-                <Text style={styles.barLabel}>{item.date}</Text>
+                <AppText variant="caption" tone="muted" style={styles.barLabel}>
+                  {item.date}
+                </AppText>
               </View>
             );
           })}
         </View>
-      </View>
-      
-      <Text style={styles.sectionTitle}>Recent Activity</Text>
+      </Surface>
+
+      <SectionHeader title="Recent Activity" style={styles.sectionTitle} />
     </View>
   );
 
   const renderItem = ({ item }: { item: any }) => {
     const isAnonymous = !item.viewer;
-    
+
     return (
-      <View style={styles.viewItem}>
+      <Surface radius="lg" padding="md" style={styles.viewItem}>
         <View style={styles.avatarContainer}>
           {isAnonymous ? (
-            <View style={[styles.avatar, styles.anonymousAvatar]}>
-              <Icon name="incognito" size={24} color={COLORS.textSecondary} />
+            <View style={[styles.anonymousAvatar, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+              <Icon name="incognito" size={24} color={colors.textSecondary} />
             </View>
           ) : item.viewer.avatarUrl ? (
-            <Avatar uri={item.viewer.avatarUrl} name={item.viewer.displayName} size={48} style={styles.avatar} />
+            <Avatar uri={item.viewer.avatarUrl} name={item.viewer.displayName} size={48} />
           ) : (
-            <Avatar name={item.viewer.displayName} size={48} style={styles.avatar} />
+            <Avatar name={item.viewer.displayName} size={48} />
           )}
         </View>
 
         <View style={styles.infoContainer}>
-          <Text style={styles.viewerName}>
+          <AppText variant="title" numberOfLines={1}>
             {isAnonymous ? 'Anonymous Viewer' : item.viewer.displayName}
-          </Text>
-          <Text style={styles.viewTarget}>
+          </AppText>
+          <AppText variant="caption" tone="secondary" numberOfLines={1} style={styles.viewTarget}>
             {item.cardId ? `Viewed Card: ${item.card?.title || 'Unknown'}` : 'Viewed Main Profile'}
-          </Text>
-          <Text style={styles.timestamp}>{formatDate(item.createdAt)}</Text>
+          </AppText>
+          <AppText variant="caption" tone="muted" style={styles.timestamp}>
+            {formatDate(item.createdAt)}
+          </AppText>
         </View>
 
-        <View style={styles.sourceBadge}>
-          <Icon name={getSourceIcon(item.source)} size={16} color={COLORS.primary} />
-          <Text style={styles.sourceText}>{item.source.toUpperCase()}</Text>
-        </View>
-      </View>
+        <Pill label={item.source || 'view'} icon={getSourceIcon(item.source)} tone="neutral" />
+      </Surface>
     );
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <LoadingPlaceholder rows={4} />
-      </SafeAreaView>
+      <Screen edges={['bottom']}>
+        <View style={styles.listContainer}>
+          <LoadingRows rows={4} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      {views.length === 0 ? (
+    <Screen edges={['bottom']}>
+      {error && views.length === 0 ? (
+        <ErrorState
+          title="Couldn't load views"
+          message="We couldn't reach the analytics service. Check your connection and try again."
+          onRetry={fetchData}
+        />
+      ) : views.length === 0 ? (
         <EmptyState
-          emoji="📊"
+          icon={ICONS.chart}
           title="No views yet"
           description="Share your card or QR code to start collecting analytics."
         />
@@ -167,107 +203,17 @@ export const ViewsScreen: React.FC<Props> = () => {
           renderItem={renderItem}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
         />
       )}
-    </SafeAreaView>
+    </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bgPrimary,
-  },
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   listContainer: {
     padding: SPACING.md,
-  },
-  viewItem: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.bgCard,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.sm,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  avatarContainer: {
-    marginRight: SPACING.md,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.bgElevated,
-  },
-  anonymousAvatar: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.bgElevated,
-  },
-  placeholderAvatar: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-  },
-  placeholderText: {
-    color: COLORS.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  infoContainer: {
-    flex: 1,
-  },
-  viewerName: {
-    color: COLORS.textPrimary,
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
-  },
-  viewTarget: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.sm,
-    marginTop: 2,
-  },
-  timestamp: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.xs,
-    marginTop: 4,
-  },
-  sourceBadge: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  sourceText: {
-    color: COLORS.primary,
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginTop: 2,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.xl,
-  },
-  emptyTitle: {
-    color: COLORS.textPrimary,
-    fontSize: FONT_SIZE.xl,
-    fontWeight: '700',
-    marginTop: SPACING.md,
-  },
-  emptyDesc: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.md,
-    textAlign: 'center',
-    marginTop: SPACING.sm,
+    paddingBottom: SPACING.xxl,
   },
   headerContainer: {
     paddingBottom: SPACING.lg,
@@ -275,48 +221,27 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: SPACING.md,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
   },
   statCard: {
     flex: 1,
-    backgroundColor: COLORS.bgCard,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.primary,
   },
   statLabel: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textMuted,
-    marginTop: 4,
-    fontWeight: '600',
+    marginTop: SPACING.xs,
   },
   chartCard: {
-    backgroundColor: COLORS.bgCard,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   chartTitle: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.lg,
+    marginTop: SPACING.xxs,
   },
   chartContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     height: 140,
-    paddingTop: 20,
+    paddingTop: SPACING.lg,
   },
   barWrapper: {
     alignItems: 'center',
@@ -325,31 +250,47 @@ const styles = StyleSheet.create({
   barTrack: {
     width: 24,
     height: 100,
-    backgroundColor: COLORS.bgElevated,
-    borderRadius: 4,
+    borderRadius: BORDER_RADIUS.xs,
+    borderWidth: 1,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
   barFill: {
     width: '100%',
-    backgroundColor: COLORS.primary,
-    borderRadius: 4,
+    borderRadius: BORDER_RADIUS.xs,
   },
   barLabel: {
-    fontSize: 10,
-    color: COLORS.textMuted,
     marginTop: SPACING.sm,
   },
   barLabelTop: {
-    fontSize: 10,
-    color: COLORS.primary,
-    marginBottom: 4,
-    fontWeight: 'bold',
+    marginBottom: SPACING.xs,
   },
   sectionTitle: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
     marginBottom: SPACING.md,
+  },
+  viewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  avatarContainer: {
+    marginRight: SPACING.md,
+  },
+  anonymousAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoContainer: {
+    flex: 1,
+  },
+  viewTarget: {
+    marginTop: SPACING.xxs,
+  },
+  timestamp: {
+    marginTop: SPACING.xs,
   },
 });

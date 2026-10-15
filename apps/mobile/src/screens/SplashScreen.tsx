@@ -1,88 +1,70 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
-import { COLORS, FONT_SIZE, SPACING } from '../theme/tokens';
+import { View, StyleSheet, Animated } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { AppText, Icon } from '../components/ui';
+import { SPACING, BORDER_RADIUS } from '../theme/tokens';
 
 /**
- * SplashScreen — Branded loading screen shown during auth token hydration.
- *
- * Uses a pulsing opacity animation on the logo to indicate loading activity
- * without requiring any external dependencies.
+ * SplashScreen — branded loading screen shown during auth token hydration.
+ * Pulsing accent mark, no external dependencies.
  */
 export default function SplashScreen() {
   const opacity = useRef(new Animated.Value(0.4)).current;
-  const scale = useRef(new Animated.Value(0.9)).current;
+  const scale = useRef(new Animated.Value(0.92)).current;
+  const { colors } = useTheme();
 
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scale, {
-            toValue: 1.05,
-            duration: 800,
-            useNativeDriver: true,
-          }),
+          Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 1.04, duration: 800, useNativeDriver: true }),
         ]),
         Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 0.4,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scale, {
-            toValue: 0.9,
-            duration: 800,
-            useNativeDriver: true,
-          }),
+          Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 0.92, duration: 800, useNativeDriver: true }),
         ]),
       ]),
-    ).start();
+    );
+    loop.start();
+    return () => loop.stop();
   }, [opacity, scale]);
 
   return (
-    <View style={styles.container}>
-      <Animated.View style={[styles.logoContainer, { opacity, transform: [{ scale }] }]}>
-        <Text style={styles.logo}>⚡</Text>
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <Animated.View
+        style={[
+          styles.mark,
+          { borderColor: colors.accentBorder, backgroundColor: colors.bgCard, opacity, transform: [{ scale }] },
+        ]}>
+        <Icon name="lightning-bolt" size={44} color={colors.accent} />
       </Animated.View>
-      <Text style={styles.title}>DevCard</Text>
-      <Text style={styles.subtitle}>Loading your profile…</Text>
+      <View style={styles.wordmarkRow}>
+        <AppText variant="eyebrow" tone="muted" style={styles.wordmark}>
+          DEV
+        </AppText>
+        <AppText variant="eyebrow" tone="accent" style={styles.wordmark}>
+          CARD
+        </AppText>
+      </View>
+      <AppText variant="caption" tone="muted" style={styles.status}>
+        Loading your profile
+      </AppText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bgPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.md,
-  },
-  logoContainer: {
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  mark: {
     width: 100,
     height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.bgCard,
+    borderRadius: BORDER_RADIUS.xxl,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.primary + '44',
+    borderWidth: 1.5,
   },
-  logo: {
-    fontSize: 48,
-  },
-  title: {
-    fontSize: FONT_SIZE.xxl,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: FONT_SIZE.sm,
-    color: COLORS.textMuted,
-  },
+  wordmarkRow: { flexDirection: 'row', marginTop: SPACING.lg },
+  wordmark: { letterSpacing: 4, fontSize: 13 },
+  status: { marginTop: SPACING.sm },
 });

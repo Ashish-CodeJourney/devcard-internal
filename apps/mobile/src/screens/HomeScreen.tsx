@@ -1,42 +1,81 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../theme/tokens';
-import { useAuth } from '../context/AuthContext';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { get } from '../services/api';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/MainTabs';
 import { PLATFORMS } from '@devcard/shared';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  AppText,
+  Avatar,
+  Button,
+  EmptyState,
+  Icon,
+  IconName,
+  Pill,
+  SectionHeader,
+  Skeleton,
+  Surface,
+} from '../components/ui';
+import { CardVisual, CardPreset } from '../components/CardVisual';
+import { SPACING, BORDER_RADIUS, LAYOUT } from '../theme/tokens';
 
-type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList>;
-};
+const CARD_PRESETS_KEY = 'devcard.cardPresets';
 
-export default function HomeScreen({ navigation }: Props) {
-  const { token } = useAuth();
-  const { colors, isDark } = useTheme();
-  const themed = React.useMemo(() => createThemedStyles(colors), [colors]);
+interface PlatformLink {
+  id: string;
+  platform: string;
+  username: string;
+  url: string;
+}
+
+interface Card {
+  id: string;
+  title: string;
+  isDefault: boolean;
+  links: PlatformLink[];
+}
+
+export default function HomeScreen() {
+  const { token, user } = useAuth();
+  const { colors } = useTheme();
+  const navigation = useNavigation<any>();
+
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [cards, setCards] = useState<any[]>([]);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [links, setLinks] = useState<PlatformLink[]>([]);
+  const [presets, setPresets] = useState<Record<string, CardPreset>>({});
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
     try {
-      const [cardsData] = await Promise.all([
+      const [cardsData, profileData, rawPresets] = await Promise.all([
         get<any[]>('/api/cards', token).catch(() => []),
         get<any>('/api/profiles/me', token).catch(() => null),
+        AsyncStorage.getItem(CARD_PRESETS_KEY).catch(() => null),
       ]);
-      setCards(cardsData || []);
+      setCards(
+        (cardsData || []).map(c => ({
+          id: c.id,
+          title: c.title,
+          isDefault: c.isDefault,
+          links: c.links ?? c.cardLinks?.map((cl: any) => cl.link) ?? [],
+        })),
+      );
+      setLinks(profileData?.platformLinks || []);
+      setPresets(rawPresets ? JSON.parse(rawPresets) : {});
     } finally {
       setLoading(false);
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData]),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -44,187 +83,214 @@ export default function HomeScreen({ navigation }: Props) {
     setRefreshing(false);
   };
 
-  const defaultCard = cards.find((card) => card.isDefault) || cards[0] || null;
+  const defaultCard = cards.find(c => c.isDefault) || cards[0] || null;
 
-  const defaultCardLinkSummary = defaultCard?.links?.slice(0, 4).map((link: any) => PLATFORMS[link.platform]?.name || link.platform).join(' · ') || '';
+  const shareDefault = async () => {
+    if (!defaultCard) return;
+    try {
+      await Share.share({ message: `Open my DevCard: devcard://card/${defaultCard.id}` });
+    } catch {
+      // cancelled
+    }
+  };
 
   if (loading) {
     return (
-      <SafeAreaView style={themed.container}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
-        <View style={themed.loadingRoot} />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <View style={styles.pad}>
+          <Skeleton width={120} height={14} />
+          <Skeleton width="70%" height={34} borderRadius={10} style={styles.skelMt} />
+          <Skeleton width="100%" height={200} borderRadius={BORDER_RADIUS.xl} style={styles.skelMtLg} />
+        </View>
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={themed.container}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
+  const initials = user?.displayName || user?.username || 'Dev';
 
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
-        }>
-        <Text style={themed.pageTitle}>Dashboard</Text>
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}>
+        {/* ── Identity ── */}
+        <Pressable
+          onPress={() => navigation.navigate('Profile')}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+          style={styles.identity}>
+          <Avatar uri={user?.avatarUrl} name={initials} size={52} ring />
+          <View style={styles.identityText}>
+            <AppText variant="eyebrow" tone="muted">
+              WELCOME BACK
+            </AppText>
+            <AppText variant="h2" numberOfLines={1}>
+              {user?.displayName || user?.username || 'Developer'}
+            </AppText>
+            <AppText variant="mono" tone="secondary" numberOfLines={1}>
+              @{user?.username || 'you'}
+              {user?.role ? ` · ${user.role}` : ''}
+              {user?.company ? ` · ${user.company}` : ''}
+            </AppText>
+          </View>
+          <Icon name="chevron-right" size={22} color={colors.textMuted} />
+        </Pressable>
+
+        {/* ── Primary card ── */}
+        <SectionHeader title="Primary card" action={{ label: 'Manage', icon: 'chevron-right', onPress: () => navigation.navigate('Cards') }} />
 
         {defaultCard ? (
-          <View style={themed.defaultCardWrap}>
-            <TouchableOpacity
-              style={themed.defaultCard}
-              activeOpacity={0.9}
-              onPress={() => (navigation as any).navigate('Cards')}>
-              <View style={styles.cardTopRow}>
-                <Text style={themed.cardEyebrow}>DEFAULT CARD</Text>
-                <Text style={themed.defaultBadge}>Active</Text>
-              </View>
-              <Text style={themed.cardTitle}>{defaultCard.title}</Text>
-              <Text style={themed.cardSubtitle}>{defaultCardLinkSummary || 'No platform links yet'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={themed.homeActionBtn} onPress={() => (navigation as any).navigate('Cards')}>
-              <Text style={themed.homeActionText}>Manage Cards</Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            <Pressable onPress={() => navigation.navigate('Cards')} accessibilityRole="button" accessibilityLabel={`Open ${defaultCard.title}`}>
+              <CardVisual
+                title={defaultCard.title}
+                links={defaultCard.links}
+                isDefault={defaultCard.isDefault}
+                preset={presets[defaultCard.id] ?? 'signal'}
+                owner={user?.username}
+                height={210}
+              />
+            </Pressable>
+            <View style={styles.heroActions}>
+              <Button label="Share card" icon="share-variant-outline" onPress={shareDefault} style={styles.heroBtn} />
+              <Button label="View as others" icon="eye-outline" variant="secondary" onPress={() => navigation.navigate('Cards')} style={styles.heroBtn} />
+            </View>
+          </>
         ) : (
-          <TouchableOpacity
-            style={themed.emptyCardCta}
-            activeOpacity={0.9}
-            onPress={() => (navigation as any).navigate('Cards')}>
-              <View style={themed.cardSilhouette}>
-                <View style={themed.cardChip} />
-                <View style={themed.cardLine} />
-              <View style={[themed.cardLine, styles.cardLineShort]} />
-              </View>
-            <Text style={themed.emptyTitle}>No cards yet</Text>
-            <Text style={themed.emptySubtitle}>Tap to create your first DevCard</Text>
-          </TouchableOpacity>
+          <Surface variant="outline" radius="xl" padding="lg" style={{ borderColor: colors.border }}>
+            <EmptyState
+              icon="card-account-details-outline"
+              title="No card yet"
+              description="Build your first card to start sharing a single link for everything you do."
+              actionLabel="Create a card"
+              onAction={() => navigation.navigate('Cards')}
+            />
+          </Surface>
+        )}
+
+        {/* ── Quick actions ── */}
+        <SectionHeader title="Manage" style={styles.sectionSpacing} />
+        <View style={styles.quickGrid}>
+          <QuickAction icon="account-circle-outline" label="Profile" onPress={() => navigation.navigate('Profile')} />
+          <QuickAction icon="link-variant" label="Links" badge={links.length} onPress={() => navigation.navigate('Links')} />
+          <QuickAction icon="card-account-details-outline" label="Cards" badge={cards.length} onPress={() => navigation.navigate('Cards')} />
+          <QuickAction icon="qrcode-scan" label="Scan" onPress={() => navigation.navigate('Scan')} />
+          <QuickAction icon="chart-line" label="Views" onPress={() => navigation.navigate('Views')} />
+          <QuickAction icon="nfc-variant" label="NFC" onPress={() => navigation.navigate('Nfc')} />
+        </View>
+
+        {/* ── Platform coverage ── */}
+        <SectionHeader
+          title={`Platforms · ${links.length}`}
+          style={styles.sectionSpacing}
+          action={{ label: 'Edit', icon: 'pencil-outline', onPress: () => navigation.navigate('Links') }}
+        />
+        {links.length === 0 ? (
+          <Pressable onPress={() => navigation.navigate('Links')} accessibilityRole="button">
+            <Surface variant="outline" radius="lg" padding="md" style={[styles.addLinks, { borderColor: colors.border }]}>
+              <Icon name="plus" size={18} color={colors.accent} />
+              <AppText variant="label" tone="secondary" style={styles.addLinksText}>
+                Add your first platform link
+              </AppText>
+            </Surface>
+          </Pressable>
+        ) : (
+          <View style={styles.pillWrap}>
+            {links.map(l => (
+              <Pill
+                key={l.id}
+                label={PLATFORMS[l.platform]?.name || l.platform}
+                tone="neutral"
+                icon={undefined}
+                style={styles.pill}
+              />
+            ))}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+function QuickAction({
+  icon,
+  label,
+  badge,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  badge?: number;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.quickAction,
+        { backgroundColor: colors.bgCard, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
+      ]}>
+      <View style={[styles.quickIcon, { backgroundColor: colors.bgElevated }]}>
+        <Icon name={icon} size={20} color={colors.accent} />
+      </View>
+      <AppText variant="label" numberOfLines={1}>
+        {label}
+      </AppText>
+      {typeof badge === 'number' && badge > 0 ? (
+        <AppText variant="caption" tone="muted">
+          {badge}
+        </AppText>
+      ) : null}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  scrollContent: { padding: SPACING.lg, paddingBottom: SPACING.xxl },
-  cardTopRow: {
+  container: { flex: 1 },
+  scroll: { paddingBottom: SPACING.xxxl },
+  pad: { padding: SPACING.lg },
+  skelMt: { marginTop: SPACING.md },
+  skelMtLg: { marginTop: SPACING.lg },
+  identity: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: LAYOUT.topOffset,
+    paddingBottom: SPACING.lg,
+  },
+  identityText: { flex: 1, marginLeft: SPACING.md },
+  heroActions: { flexDirection: 'row', marginTop: SPACING.md, paddingHorizontal: SPACING.lg },
+  heroBtn: { flex: 1, marginHorizontal: SPACING.xs },
+  sectionSpacing: { marginTop: SPACING.xl, paddingHorizontal: SPACING.lg },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: SPACING.lg - SPACING.xs,
+  },
+  quickAction: {
+    width: '31%',
+    marginHorizontal: '1.16%',
+    marginBottom: SPACING.sm,
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    alignItems: 'center',
+  },
+  quickIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: SPACING.sm,
   },
-  cardLineShort: { width: '55%' },
+  addLinks: { flexDirection: 'row', alignItems: 'center', marginHorizontal: SPACING.lg },
+  addLinksText: { marginLeft: SPACING.sm },
+  pillWrap: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.lg },
+  pill: { marginRight: SPACING.sm, marginBottom: SPACING.sm },
 });
-
-function createThemedStyles(colors: typeof COLORS) {
-  return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.bgPrimary },
-    loadingRoot: {
-      flex: 1,
-      padding: SPACING.lg,
-      backgroundColor: colors.bgPrimary,
-    },
-    pageTitle: {
-      color: colors.textPrimary,
-      fontSize: FONT_SIZE.xxl,
-      fontWeight: '800',
-      marginBottom: SPACING.lg,
-    },
-    emptyCardCta: {
-      minHeight: 360,
-      borderRadius: BORDER_RADIUS.xl,
-      borderWidth: 1,
-      borderStyle: 'dashed',
-      borderColor: colors.border,
-      backgroundColor: colors.bgCard,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: SPACING.lg,
-    },
-    cardSilhouette: {
-      width: 230,
-      height: 150,
-      borderRadius: 22,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.bgSecondary,
-      padding: SPACING.md,
-      justifyContent: 'center',
-      marginBottom: SPACING.lg,
-    },
-    cardChip: {
-      width: 42,
-      height: 26,
-      borderRadius: 8,
-      backgroundColor: colors.bgElevated,
-      marginBottom: SPACING.md,
-    },
-    cardLine: {
-      height: 14,
-      width: '80%',
-      borderRadius: 999,
-      backgroundColor: colors.border,
-      marginBottom: SPACING.sm,
-    },
-    emptyTitle: {
-      color: colors.textPrimary,
-      fontSize: FONT_SIZE.xl,
-      fontWeight: '800',
-      marginBottom: SPACING.xs,
-    },
-    emptySubtitle: {
-      color: colors.textMuted,
-      fontSize: FONT_SIZE.md,
-    },
-    defaultCardWrap: {
-      gap: SPACING.md,
-    },
-    defaultCard: {
-      minHeight: 320,
-      borderRadius: BORDER_RADIUS.xl,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      backgroundColor: colors.bgCard,
-      padding: SPACING.lg,
-    },
-    cardEyebrow: {
-      color: colors.primaryLight,
-      fontSize: FONT_SIZE.xs,
-      fontWeight: '800',
-      letterSpacing: 0.8,
-    },
-    cardTitle: {
-      color: colors.textPrimary,
-      fontSize: 30,
-      fontWeight: '800',
-      marginBottom: SPACING.xs,
-    },
-    cardSubtitle: {
-      color: colors.textSecondary,
-      fontSize: FONT_SIZE.md,
-      lineHeight: 22,
-    },
-    defaultBadge: {
-      color: colors.textSecondary,
-      fontSize: FONT_SIZE.xs,
-      fontWeight: '700',
-    },
-    homeActionBtn: {
-      backgroundColor: colors.bgCard,
-      borderColor: colors.border,
-      borderWidth: 1,
-      borderRadius: BORDER_RADIUS.md,
-      paddingVertical: SPACING.md,
-      alignItems: 'center',
-    },
-    homeActionText: {
-      color: colors.textPrimary,
-      fontSize: FONT_SIZE.md,
-      fontWeight: '700',
-    },
-  });
-}

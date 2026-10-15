@@ -1,206 +1,271 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
+  ScrollView,
+  Pressable,
   Linking,
   StatusBar,
+  ActivityIndicator,
+  AppState,
+  useWindowDimensions,
+  type AppStateStatus,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../theme/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+import { authPalette } from '../theme/authTheme';
+import { AuthHero } from '../components/AuthHero';
 import { API_BASE_URL, OAUTH_REDIRECT_URI } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { AppText, Icon, IconName } from '../components/ui';
+import { SPACING, BORDER_RADIUS } from '../theme/tokens';
+
+type Provider = 'github' | 'google';
 
 export default function LoginScreen() {
   const { enterDemoMode } = useAuth();
+  const { isDark } = useTheme();
+  const p = authPalette(isDark);
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
 
-  const handleGitHubLogin = () => {
-    Linking.openURL(
-      `${API_BASE_URL}/auth/github?state=mobile_github&mobile_redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}`,
-    );
-  };
+  const [launching, setLaunching] = useState<Provider | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const lockRef = useRef(false);
 
-  const handleGoogleLogin = () => {
-    Linking.openURL(
-      `${API_BASE_URL}/auth/google?state=mobile_google&mobile_redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}`,
-    );
-  };
+  const heroHeight = Math.max(200, Math.min(Math.round(height * 0.40), 340));
+
+  // OAuth happens in the system browser; clear the busy state when the app
+  // comes back to the foreground so the button is usable again.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (next === 'active') {
+        lockRef.current = false;
+        setLaunching(null);
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  const startOAuth = useCallback(async (provider: Provider) => {
+    if (lockRef.current) return;
+    lockRef.current = true;
+    setError(null);
+    setLaunching(provider);
+
+    const url = `${API_BASE_URL}/auth/${provider}?state=mobile_${provider}&mobile_redirect_uri=${encodeURIComponent(
+      OAUTH_REDIRECT_URI,
+    )}`;
+
+    try {
+      await Linking.openURL(url);
+      // Safety: release the lock if the app never backgrounds.
+      setTimeout(() => {
+        lockRef.current = false;
+        setLaunching(prev => (prev === provider ? null : prev));
+      }, 4000);
+    } catch {
+      lockRef.current = false;
+      setLaunching(null);
+      setError(`Could not open ${provider === 'github' ? 'GitHub' : 'Google'}. Please try again.`);
+    }
+  }, []);
+
+  const busy = launching !== null;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgPrimary} />
+    <View style={[styles.root, { backgroundColor: p.surface }]}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        translucent
+        backgroundColor="transparent"
+      />
 
-      <View style={styles.content}>
-        <View style={styles.topSpace} />
-
-        <View style={styles.header}>
-          <View style={styles.logoCard}>
-            <Text style={styles.logo}>⚡</Text>
-            <Text style={styles.logoText}>DevCard</Text>
-          </View>
-          <Text style={styles.title}>One Tap.{"\n"}Every Profile.</Text>
-          <Text style={styles.subtitle}>Stop sharing one profile at a time.</Text>
-        </View>
-
-        <View style={styles.authBlock}>
-          <TouchableOpacity
-            style={[styles.oauthButton, styles.githubButton]}
-            onPress={handleGitHubLogin}
-            activeOpacity={0.85}>
-            <Text style={styles.oauthIcon}>🐙</Text>
-            <Text style={styles.oauthText}>Continue with GitHub</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.oauthButton, styles.demoButton]}
-            onPress={enterDemoMode}
-            activeOpacity={0.85}>
-            <Text style={styles.oauthIcon}>🧪</Text>
-            <Text style={styles.demoText}>Continue in Demo Mode</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.oauthButton, styles.googleButton]}
-            onPress={handleGoogleLogin}
-            activeOpacity={0.85}>
-            <Text style={styles.oauthIcon}>🔍</Text>
-            <Text style={styles.oauthText}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          <View style={styles.orRow}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>or</Text>
-            <View style={styles.orLine} />
-          </View>
-
-          <TouchableOpacity activeOpacity={0.8}>
-            <Text style={styles.emailLink}>Sign up with email →</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.terms}>
-            By continuing you agree to our Terms & Privacy Policy.
-          </Text>
-        </View>
+      {/* ── Hero ── */}
+      <View style={{ height: heroHeight }}>
+        <AuthHero height={heroHeight} palette={p} isDark={isDark} />
       </View>
-    </SafeAreaView>
+
+      {/* ── Panel ── */}
+      <View
+        style={[
+          styles.panel,
+          { backgroundColor: p.surface, borderColor: p.border, marginTop: -28 },
+        ]}>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACING.lg }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
+          <AppText variant="h1" align="center" color={p.text}>
+            Login
+          </AppText>
+          <AppText variant="body" align="center" color={p.textSecondary} style={styles.subtitle}>
+            Sign in to your DevCard account to continue.
+          </AppText>
+
+          {error ? (
+            <View style={[styles.errorRow, { backgroundColor: p.surfaceInset, borderColor: p.border }]}>
+              <Icon name="alert-circle-outline" size={15} color={p.accent} />
+              <AppText variant="caption" color={p.text} style={styles.errorText}>
+                {error}
+              </AppText>
+            </View>
+          ) : null}
+
+          {/* Primary providers */}
+          <SocialButton
+            provider="github"
+            label="Continue with GitHub"
+            palette={p}
+            variant="dark"
+            loading={launching === 'github'}
+            disabled={busy}
+            onPress={() => startOAuth('github')}
+          />
+          <SocialButton
+            provider="google"
+            label="Continue with Google"
+            palette={p}
+            variant="light"
+            loading={launching === 'google'}
+            disabled={busy}
+            onPress={() => startOAuth('google')}
+            style={styles.secondProvider}
+          />
+
+          {/* Divider */}
+          <View style={styles.orRow}>
+            <View style={[styles.orLine, { backgroundColor: p.border }]} />
+            <AppText variant="caption" color={p.textMuted} style={styles.orText}>
+              Or
+            </AppText>
+            <View style={[styles.orLine, { backgroundColor: p.border }]} />
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Explore in demo mode"
+            disabled={busy}
+            onPress={enterDemoMode}
+            style={({ pressed }) => [
+              styles.demoBtn,
+              { borderColor: p.border, opacity: busy ? 0.5 : pressed ? 0.75 : 1 },
+            ]}>
+            <Icon name="flask-outline" size={17} color={p.textSecondary} />
+            <AppText variant="button" color={p.textSecondary} style={styles.demoText}>
+              Explore in demo mode
+            </AppText>
+          </Pressable>
+
+          <AppText variant="caption" align="center" color={p.textMuted} style={styles.terms}>
+            By continuing you agree to our Terms & Privacy Policy.
+          </AppText>
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
+
+function SocialButton({
+  provider,
+  label,
+  palette,
+  variant,
+  loading,
+  disabled,
+  onPress,
+  style,
+}: {
+  provider: Provider;
+  label: string;
+  palette: ReturnType<typeof authPalette>;
+  variant: 'dark' | 'light';
+  loading: boolean;
+  disabled: boolean;
+  onPress: () => void;
+  style?: any;
+}) {
+  const isDark = variant === 'dark';
+  const bg = isDark ? palette.buttonBg : palette.socialLight;
+  const fg = isDark ? palette.buttonText : palette.text;
+  const icon = (provider === 'github' ? 'github' : 'google') as IconName;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, busy: loading }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.socialBtn,
+        {
+          backgroundColor: bg,
+          borderColor: isDark ? 'transparent' : palette.border,
+          opacity: disabled && !loading ? 0.5 : pressed ? 0.88 : 1,
+        },
+        style,
+      ]}>
+      {loading ? (
+        <ActivityIndicator color={fg} />
+      ) : (
+        <>
+          <Icon name={icon} size={20} color={fg} />
+          <AppText variant="button" color={fg} style={styles.socialText}>
+            {label}
+          </AppText>
+        </>
+      )}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: { flex: 1 },
+  panel: {
     flex: 1,
-    backgroundColor: COLORS.bgPrimary,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
   content: {
-    flex: 1,
-    justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    paddingTop: SPACING.xl,
   },
-  topSpace: {
-    height: SPACING.md,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: SPACING.xl,
-    marginBottom: SPACING.xl,
-  },
-  logoCard: {
-    width: 126,
-    height: 126,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.bgCard,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.lg,
-  },
-  logo: {
-    fontSize: 36,
-    marginBottom: SPACING.xs,
-  },
-  logoText: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.sm,
-  },
-  title: {
-    textAlign: 'center',
-    fontSize: 40,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    lineHeight: 44,
-  },
-  subtitle: {
-    textAlign: 'center',
-    fontSize: FONT_SIZE.lg,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.md,
-  },
-  authBlock: {
-    gap: SPACING.md,
-  },
-  oauthButton: {
+  subtitle: { marginTop: SPACING.sm, marginBottom: SPACING.xl },
+  errorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.md,
+    borderWidth: 1,
     borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
   },
-  githubButton: {
-    backgroundColor: COLORS.bgCard,
-    borderColor: COLORS.borderLight,
-  },
-  googleButton: {
-    backgroundColor: COLORS.bgCard,
-    borderColor: COLORS.border,
-  },
-  demoButton: {
-    backgroundColor: COLORS.primaryDark,
-    borderColor: COLORS.primary,
-  },
-  oauthIcon: {
-    fontSize: 20,
-    marginRight: SPACING.sm,
-  },
-  oauthText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  demoText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  orRow: {
+  errorText: { marginLeft: SPACING.sm, flex: 1 },
+  socialBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: SPACING.xs,
+    justifyContent: 'center',
+    height: 54,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
   },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.border,
+  socialText: { marginLeft: SPACING.sm },
+  secondProvider: { marginTop: SPACING.md },
+  orRow: { flexDirection: 'row', alignItems: 'center', marginVertical: SPACING.xl },
+  orLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  orText: { marginHorizontal: SPACING.md },
+  demoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
   },
-  orText: {
-    color: COLORS.textMuted,
-    marginHorizontal: SPACING.md,
-    fontSize: FONT_SIZE.sm,
-  },
-  emailLink: {
-    textAlign: 'center',
-    color: COLORS.primaryLight,
-    fontSize: FONT_SIZE.lg,
-    fontWeight: '600',
-  },
-  terms: {
-    fontSize: FONT_SIZE.xs,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: SPACING.md,
-    lineHeight: 18,
-  },
+  demoText: { marginLeft: SPACING.sm },
+  terms: { marginTop: SPACING.lg },
 });

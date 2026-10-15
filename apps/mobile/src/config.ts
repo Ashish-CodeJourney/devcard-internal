@@ -1,9 +1,7 @@
 // ── DevCard API Configuration ─────────────────────────────────────────────────
-// Use localhost consistently with adb reverse on Android emulators.
+// Use the hosted backend for development and release builds.
 
-export const API_BASE_URL: string = __DEV__
-  ? 'http://localhost:3000'
-  : 'https://api.devcard.dev';
+export const API_BASE_URL: string = 'https://devcard-internal-backend.onrender.com';
 
 export const APP_URL: string = __DEV__
   ? 'http://localhost:5173'

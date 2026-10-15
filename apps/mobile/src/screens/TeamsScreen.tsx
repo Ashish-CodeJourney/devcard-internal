@@ -1,14 +1,17 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, StatusBar, Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { EmptyState } from '../components/EmptyState';
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../services/api';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from '../theme/tokens';
+import {
+  AppText,
+  Button,
+  EmptyState,
+  Screen,
+  SectionHeader,
+  Surface,
+  TextField,
+} from '../components/ui';
+import { SPACING } from '../theme/tokens';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/MainTabs';
 
@@ -31,45 +34,41 @@ export default function TeamsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bgPrimary} />
-      <View style={styles.header}>
-        <Text style={styles.title}>Teams</Text>
-        <Text style={styles.subtitle}>Look up a team to view their group DevCard</Text>
+    <Screen edges={['bottom']}>
+      <View style={styles.content}>
+        <SectionHeader title="Look up a team" />
+
+        <Surface radius="xl" padding="lg" style={styles.card}>
+          <AppText variant="caption" tone="secondary" style={styles.intro}>
+            Enter a team slug to view members and their group DevCard.
+          </AppText>
+          <TextField
+            label="Team slug"
+            placeholder="e.g. core-builders"
+            value={slugInput}
+            onChangeText={setSlugInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            monospace
+            icon="magnify"
+            returnKeyType="search"
+            onSubmitEditing={handleLookup}
+          />
+          <Button label="Look up team" icon="magnify" onPress={handleLookup} loading={loading} />
+        </Surface>
+
+        <EmptyState
+          icon="account-multiple-outline"
+          title="Find a team"
+          description="Enter a team slug to view members and their DevCards."
+        />
       </View>
-      <View style={styles.joinSection}>
-        <View style={styles.inputRow}>
-          <TextInput style={styles.input} placeholder="Team slug"
-            placeholderTextColor={COLORS.textMuted} value={slugInput}
-            onChangeText={setSlugInput} autoCapitalize="none" autoCorrect={false}
-            returnKeyType="search" onSubmitEditing={handleLookup} />
-          <TouchableOpacity style={[styles.searchBtn, loading && styles.disabled]}
-            onPress={handleLookup} disabled={loading} activeOpacity={0.7}>
-            <Icon name="magnify" size={22} color={COLORS.white} />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <EmptyState emoji="👥" title="Find a team"
-        description="Enter a team slug to view members and their DevCards." />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bgPrimary },
-  header: { padding: SPACING.lg, paddingBottom: SPACING.sm },
-  title: { fontSize: FONT_SIZE.xl, fontWeight: '800', color: COLORS.textPrimary },
-  subtitle: { fontSize: FONT_SIZE.sm, color: COLORS.textSecondary, marginTop: SPACING.xs },
-  joinSection: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg },
-  inputRow: { flexDirection: 'row', gap: SPACING.sm },
-  input: {
-    flex: 1, backgroundColor: COLORS.bgCard, borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md, color: COLORS.textPrimary, fontSize: FONT_SIZE.md,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
-  searchBtn: {
-    backgroundColor: COLORS.primary, borderRadius: BORDER_RADIUS.md,
-    width: 48, alignItems: 'center', justifyContent: 'center', ...SHADOWS.button,
-  },
-  disabled: { opacity: 0.5 },
+  content: { flex: 1, padding: SPACING.lg },
+  card: { marginBottom: SPACING.lg },
+  intro: { marginBottom: SPACING.md },
 });

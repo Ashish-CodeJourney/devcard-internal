@@ -1,21 +1,21 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  StatusBar,
-  TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, FlatList, Pressable, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import Avatar from '../components/Avatar';
-import { EmptyState } from '../components/EmptyState';
-import { LoadingPlaceholder } from '../components/LoadingPlaceholder';
+import {
+  AppText,
+  Avatar,
+  EmptyState,
+  H1,
+  Icon,
+  ICONS,
+  LoadingRows,
+  Pill,
+  Screen,
+  Surface,
+  TextField,
+} from '../components/ui';
 import { useContacts } from '../hooks/useContacts';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../theme/tokens';
+import { SPACING, BORDER_RADIUS } from '../theme/tokens';
 import { useTheme } from '../context/ThemeContext';
 import type { SavedContact } from '../types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,12 +25,13 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList>;
 };
 
+type ContactFilter = 'all' | 'week' | 'osd';
+
 export default function ContactsScreen({ navigation }: Props) {
   const { contacts, loading, removeContact, refetch } = useContacts();
-  const { colors, isDark } = useTheme();
-  const themed = React.useMemo(() => createContactsThemedStyles(colors), [colors]);
+  const { colors } = useTheme();
   const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'week' | 'osd'>('all');
+  const [activeFilter, setActiveFilter] = useState<ContactFilter>('all');
 
   useFocusEffect(
     useCallback(() => {
@@ -98,251 +99,197 @@ export default function ContactsScreen({ navigation }: Props) {
 
   if (loading) {
     return (
-      <SafeAreaView style={themed.container}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
-        <LoadingPlaceholder rows={5} />
-      </SafeAreaView>
+      <Screen>
+        <View style={styles.header}>
+          <View style={styles.headerText}>
+            <AppText variant="eyebrow" tone="muted">
+              CONTACTS
+            </AppText>
+            <H1>Saved Cards</H1>
+          </View>
+        </View>
+        <View style={styles.loadingWrap}>
+          <LoadingRows rows={5} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={themed.container}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.bgPrimary} />
-
+    <Screen>
       <View style={styles.header}>
-        <Text style={themed.title}>Saved Cards</Text>
-        <Text style={themed.headerIcon}>⊕</Text>
+        <View style={styles.headerText}>
+          <AppText variant="eyebrow" tone="muted">
+            CONTACTS
+          </AppText>
+          <H1>Saved Cards</H1>
+          <AppText variant="caption" tone="muted" style={styles.headerSub}>
+            {contacts.length} {contacts.length === 1 ? 'contact' : 'contacts'} saved
+          </AppText>
+        </View>
+        <View style={[styles.headerIcon, { borderColor: colors.border, backgroundColor: colors.bgSecondary }]}>
+          <Icon name={ICONS.contacts} size={22} color={colors.accent} />
+        </View>
       </View>
 
       <View style={styles.searchWrap}>
-        <TextInput
-          style={themed.searchInput}
+        <TextField
+          icon={ICONS.search}
           placeholder="Search contacts..."
-          placeholderTextColor={colors.textMuted}
           value={query}
           onChangeText={setQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+          containerStyle={styles.searchField}
         />
       </View>
 
       <View style={styles.filtersRow}>
-        <FilterChip label="All" active={activeFilter === 'all'} colors={colors} onPress={() => setActiveFilter('all')} />
-        <FilterChip label="This week" active={activeFilter === 'week'} colors={colors} onPress={() => setActiveFilter('week')} />
-        <FilterChip label="OSD 2026" active={activeFilter === 'osd'} colors={colors} onPress={() => setActiveFilter('osd')} />
+        <FilterChip label="All" active={activeFilter === 'all'} onPress={() => setActiveFilter('all')} />
+        <FilterChip label="This week" active={activeFilter === 'week'} onPress={() => setActiveFilter('week')} />
+        <FilterChip label="OSD 2026" active={activeFilter === 'osd'} onPress={() => setActiveFilter('osd')} />
       </View>
 
       <FlatList
         data={filteredContacts}
         keyExtractor={(item) => item.username}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={themed.contactItem}
+          <Pressable
             onPress={() => handlePress(item)}
             onLongPress={() => handleRemove(item)}
-            activeOpacity={0.7}>
-            <Avatar
-              uri={item.avatarUrl ?? undefined}
-              name={item.displayName}
-              size={48}
-              style={styles.avatar}
-            />
-            <View style={styles.info}>
-                <Text style={themed.name} numberOfLines={1}>
-                {item.displayName}
-              </Text>
-              <Text style={themed.detail} numberOfLines={1}>
-                {[item.metAt || item.company || item.role || 'Event', formatDate(item.savedAt)].join(' · ')}
-              </Text>
-              <View style={themed.tagPill}>
-                <Text style={themed.tagText}>{getTag(item)}</Text>
+            accessibilityRole="button"
+            accessibilityLabel={`View ${item.displayName}`}
+            style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}>
+            <Surface radius="lg" padding="md" style={styles.contactItem}>
+              <Avatar uri={item.avatarUrl ?? undefined} name={item.displayName} size={48} />
+              <View style={styles.info}>
+                <AppText variant="title" numberOfLines={1}>
+                  {item.displayName}
+                </AppText>
+                <AppText variant="mono" tone="secondary" numberOfLines={1} style={styles.handle}>
+                  @{item.username}
+                </AppText>
+                <AppText variant="caption" tone="muted" numberOfLines={1} style={styles.detail}>
+                  {[item.metAt || item.company || item.role || 'Event', formatDate(item.savedAt)].join(' · ')}
+                </AppText>
+                <View style={styles.tagRow}>
+                  <Pill label={getTag(item)} tone="neutral" />
+                </View>
               </View>
-            </View>
-            <Text style={themed.chevron}>›</Text>
-          </TouchableOpacity>
+              <Pressable
+                onPress={() => handleRemove(item)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${item.displayName}`}
+                style={[styles.removeBtn, { borderColor: colors.border }]}>
+                <Icon name={ICONS.trash} size={18} color={colors.error} />
+              </Pressable>
+              <Icon name={ICONS.chevronRight} size={20} color={colors.textMuted} style={styles.chevron} />
+            </Surface>
+          </Pressable>
         )}
         ListFooterComponent={
-          <View style={themed.footerNote}>
-            <Text style={themed.footerTitle}>↓ Tap contact to view</Text>
-            <Text style={themed.footerSub}>Where met · note · re-share</Text>
-          </View>
+          filteredContacts.length > 0 ? (
+            <Surface variant="inset" radius="lg" padding="md" style={styles.footerNote}>
+              <Icon name={ICONS.info} size={16} color={colors.textMuted} />
+              <View style={styles.footerText}>
+                <AppText variant="caption" tone="secondary">
+                  Tap a contact to open their DevCard.
+                </AppText>
+                <AppText variant="caption" tone="muted">
+                  Long-press or use the trash icon to remove.
+                </AppText>
+              </View>
+            </Surface>
+          ) : null
         }
         ListEmptyComponent={
           <EmptyState
-            emoji="📇"
+            icon={ICONS.contacts}
             title="No saved contacts"
             description="When you view someone's DevCard, tap 'Save Contact' to add them here."
           />
         }
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bgPrimary },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SPACING.lg,
-    paddingBottom: SPACING.md,
-  },
-  title: { fontSize: FONT_SIZE.xl, fontWeight: '800', color: COLORS.textPrimary },
-  headerIcon: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.xl,
-    fontWeight: '700',
-  },
-  searchWrap: { paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
-  searchInput: {
-    backgroundColor: COLORS.bgCard,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    color: COLORS.textPrimary,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    fontSize: FONT_SIZE.md,
-  },
-  filtersRow: {
-    paddingHorizontal: SPACING.lg,
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
-  },
-  list: { padding: SPACING.lg, gap: SPACING.sm, paddingTop: 0, paddingBottom: SPACING.xl },
-  contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.bgCard,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: SPACING.md,
-  },
-  info: { flex: 1 },
-  name: { fontSize: FONT_SIZE.md, fontWeight: '600', color: COLORS.textPrimary },
-  detail: { fontSize: FONT_SIZE.sm, color: COLORS.textSecondary, marginTop: 2 },
-  tagPill: {
-    alignSelf: 'flex-start',
-    marginTop: 6,
-    backgroundColor: COLORS.bgSecondary,
-    borderRadius: BORDER_RADIUS.full,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  tagText: { color: COLORS.primaryLight, fontSize: FONT_SIZE.xs },
-  chevron: { color: COLORS.textMuted, fontSize: FONT_SIZE.lg, marginLeft: SPACING.sm },
-  footerNote: {
-    marginTop: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.bgSecondary,
-    paddingVertical: SPACING.lg,
-    alignItems: 'center',
-  },
-  footerTitle: { color: COLORS.textSecondary, fontSize: FONT_SIZE.md, fontWeight: '500' },
-  footerSub: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 4 },
-});
 
 function FilterChip({
   label,
   active,
-  colors,
   onPress,
 }: {
   label: string;
   active: boolean;
-  colors: typeof COLORS;
   onPress: () => void;
 }) {
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
-      style={[
-        stylesChip.chip,
-        active
-          ? { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }
-          : { backgroundColor: colors.bgCard, borderColor: colors.border },
-      ]}>
-      <Text style={[stylesChip.text, { color: active ? colors.textInverse : colors.textSecondary }]}>{label}</Text>
-    </TouchableOpacity>
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+      hitSlop={6}
+      style={styles.chip}>
+      <Pill label={label} tone={active ? 'accent' : 'neutral'} solid={active} icon={active ? ICONS.check : undefined} />
+    </Pressable>
   );
 }
 
-const stylesChip = StyleSheet.create({
-  chip: {
-    borderRadius: BORDER_RADIUS.full,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 7,
-    borderWidth: 1,
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
   },
-  text: { fontSize: FONT_SIZE.sm, fontWeight: '500' },
+  headerText: { flex: 1 },
+  headerSub: { marginTop: SPACING.xs },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: SPACING.md,
+  },
+  searchWrap: { paddingHorizontal: SPACING.lg },
+  searchField: { marginBottom: 0 },
+  filtersRow: {
+    paddingHorizontal: SPACING.lg,
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  chip: { minHeight: 44, justifyContent: 'center' },
+  loadingWrap: { paddingHorizontal: SPACING.lg },
+  list: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl },
+  contactItem: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm },
+  info: { flex: 1, marginLeft: SPACING.md },
+  handle: { marginTop: 1 },
+  detail: { marginTop: SPACING.xxs },
+  tagRow: { flexDirection: 'row', marginTop: SPACING.sm },
+  removeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: SPACING.sm,
+  },
+  chevron: { marginLeft: SPACING.xs },
+  footerNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.sm,
+  },
+  footerText: { flex: 1, marginLeft: SPACING.sm },
 });
-
-function createContactsThemedStyles(colors: typeof COLORS) {
-  return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.bgPrimary },
-    title: { fontSize: FONT_SIZE.xl, fontWeight: '800', color: colors.textPrimary },
-    headerIcon: {
-      color: colors.textSecondary,
-      fontSize: FONT_SIZE.xl,
-      fontWeight: '700',
-    },
-    searchInput: {
-      backgroundColor: colors.bgCard,
-      borderWidth: 1,
-      borderColor: colors.border,
-      color: colors.textPrimary,
-      borderRadius: BORDER_RADIUS.md,
-      paddingHorizontal: SPACING.md,
-      paddingVertical: SPACING.sm,
-      fontSize: FONT_SIZE.md,
-    },
-    contactItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.bgCard,
-      borderRadius: BORDER_RADIUS.md,
-      padding: SPACING.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    name: { fontSize: FONT_SIZE.md, fontWeight: '600', color: colors.textPrimary },
-    detail: { fontSize: FONT_SIZE.sm, color: colors.textSecondary, marginTop: 2 },
-    tagPill: {
-      alignSelf: 'flex-start',
-      marginTop: 6,
-      backgroundColor: colors.bgSecondary,
-      borderRadius: BORDER_RADIUS.full,
-      paddingHorizontal: SPACING.sm,
-      paddingVertical: 3,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    tagText: { color: colors.primaryLight, fontSize: FONT_SIZE.xs },
-    chevron: { color: colors.textMuted, fontSize: FONT_SIZE.lg, marginLeft: SPACING.sm },
-    footerNote: {
-      marginTop: SPACING.sm,
-      borderRadius: BORDER_RADIUS.md,
-      borderStyle: 'dashed',
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.bgSecondary,
-      paddingVertical: SPACING.lg,
-      alignItems: 'center',
-    },
-    footerTitle: { color: colors.textSecondary, fontSize: FONT_SIZE.md, fontWeight: '500' },
-    footerSub: { color: colors.textMuted, fontSize: FONT_SIZE.sm, marginTop: 4 },
-  });
-}

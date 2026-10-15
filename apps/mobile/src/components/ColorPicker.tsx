@@ -3,17 +3,17 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS } from '../theme/tokens';
 
 // ── Predefined Accent Color Palette ───────────────────────────────────────────
-// 8 curated colors that work well as card accent on the dark DevCard theme.
+// 8 curated monochrome grays for the black + white DevCard theme.
 
 export const ACCENT_COLORS = [
-  '#6366F1', // Indigo (default)
-  '#8B5CF6', // Violet
-  '#EC4899', // Pink
-  '#EF4444', // Red
-  '#F59E0B', // Amber
-  '#22C55E', // Green
-  '#06B6D4', // Cyan
-  '#3B82F6', // Blue
+  '#FFFFFF', // White (default)
+  '#D4D4D4', // Light gray
+  '#A3A3A3', // Silver
+  '#737373', // Mid gray
+  '#525252', // Dark gray
+  '#404040', // Charcoal
+  '#262626', // Near black
+  '#000000', // Black
 ] as const;
 
 export type AccentColor = (typeof ACCENT_COLORS)[number];

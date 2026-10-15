@@ -43,7 +43,7 @@ const demoState: {
     role: 'Full Stack Engineer',
     company: 'DevCard Labs',
     avatarUrl: null,
-    accentColor: '#6366F1',
+    accentColor: '#737373',
     defaultCardId: 'card-1',
   },
   links: [

@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     fontSize: FONT_SIZE.sm,
-    color: COLORS.white,
+    color: COLORS.textInverse,
     fontWeight: '700',
   },
   selectButtonTextSelected: {
