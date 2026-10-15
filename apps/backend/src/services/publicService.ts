@@ -5,6 +5,24 @@ import type { FastifyInstance } from 'fastify'
 
 const PROFILE_CACHE_TTL = 300
 
+/**
+ * Verification state exposed to clients.
+ *   verified  -> ownership proven via the provider's OAuth (strongest)
+ *   checked   -> the handle exists, per a public API (ownership NOT proven)
+ *   unverified
+ */
+function verificationFields(link: any) {
+  const verified = Boolean(link?.verified)
+  const checkedAt = link?.checkedAt ?? null
+  return {
+    verified,
+    verifiedAt: link?.verifiedAt ?? null,
+    checkedAt,
+    verificationMethod: link?.verificationMethod ?? null,
+    verificationStatus: verified ? 'verified' : checkedAt ? 'checked' : 'unverified',
+  }
+}
+
 export async function getPublicProfile(
   app: FastifyInstance,
   username: string,
@@ -48,7 +66,7 @@ export async function getPublicProfile(
     followedLinkIds = user.platformLinks.filter((link: any) => successfulFollows.some((f: any) => f.platform === link.platform && f.targetUsername.toLowerCase() === link.username.toLowerCase())).map((l: any) => l.id)
   }
 
-  const baseLinks = user.platformLinks.map((link: any) => ({ id: link.id, platform: link.platform, username: link.username, url: link.url, displayOrder: link.displayOrder, followed: false }))
+  const baseLinks = user.platformLinks.map((link: any) => ({ id: link.id, platform: link.platform, username: link.username, url: link.url, displayOrder: link.displayOrder, ...verificationFields(link), followed: false }))
 
   if (app.redis) {
     const entry = { _userId: user.id, username: user.username, displayName: user.displayName, bio: user.bio, pronouns: user.pronouns, role: user.role, company: user.company, avatarUrl: user.avatarUrl, accentColor: user.accentColor, links: baseLinks }
@@ -85,6 +103,6 @@ export async function getUserCard(
     dispatchWebhook(app.prisma as any, user.id, 'card.viewed', { event: 'card.viewed', cardId: card.id, viewerId, source: request.query?.source || 'qr', timestamp: new Date().toISOString() }).catch((error: unknown) => app.log.error(`Webhook dispatch failed: ${getErrorMessage(error)}`))
   }
 
-  const response = { title: card.title, owner: { username: user.username, displayName: user.displayName, bio: user.bio, pronouns: user.pronouns, role: user.role, company: user.company, avatarUrl: user.avatarUrl, accentColor: user.accentColor }, links: card.cardLinks.map((cl: any) => ({ id: cl.platformLink.id, platform: cl.platformLink.platform, username: cl.platformLink.username, url: cl.platformLink.url, displayOrder: cl.displayOrder })) }
+  const response = { title: card.title, owner: { username: user.username, displayName: user.displayName, bio: user.bio, pronouns: user.pronouns, role: user.role, company: user.company, avatarUrl: user.avatarUrl, accentColor: user.accentColor }, links: card.cardLinks.map((cl: any) => ({ id: cl.platformLink.id, platform: cl.platformLink.platform, username: cl.platformLink.username, url: cl.platformLink.url, displayOrder: cl.displayOrder, ...verificationFields(cl.platformLink) })) }
   return { notFound: false, data: response }
 }
