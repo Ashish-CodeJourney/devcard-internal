@@ -188,7 +188,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           data: {
             email,
             displayName: githubUser.name || baseUsername,
-            avatarUrl: githubUser.avatar_url,
+            // Deliberately NOT syncing avatarUrl here: re-login must not clobber
+            // an avatar the user uploaded or chose themselves.
             lastSignInAt: new Date(),
             isActive: true
           },
@@ -424,7 +425,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           data: {
             email: googleUser.email,
             displayName: googleUser.name || baseUsername,
-            avatarUrl: googleUser.picture,
+            // Deliberately NOT syncing avatarUrl here: re-login must not clobber
+            // an avatar the user uploaded or chose themselves.
             lastSignInAt: new Date(),
             isActive: true
           },
