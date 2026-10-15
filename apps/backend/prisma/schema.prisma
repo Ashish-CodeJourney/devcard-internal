@@ -93,6 +93,19 @@ model PlatformLink {
   displayOrder Int      @default(0) @map("display_order")
   createdAt    DateTime @default(now()) @map("created_at")
 
+  verified     Boolean  @default(false)
+  verifiedAt   DateTime?
+
+  // Verification metadata.
+  //   verified        -> ownership proven via the provider's OAuth (strongest)
+  //   checkedAt       -> the handle was confirmed to EXIST via a public API
+  //                      (weaker: proves the account exists, not that it is yours)
+  //   platformUserId  -> the provider's immutable id, so a later rename does not
+  //                      silently invalidate the verification
+  verificationMethod String?   @map("verification_method")
+  platformUserId     String?   @map("platform_user_id")
+  checkedAt          DateTime? @map("checked_at")
+
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   cardLinks CardLink[]
 

@@ -22,6 +22,7 @@ import { nfcRoutes } from './routes/nfc.js';
 import { profileRoutes } from './routes/profiles.js';
 import { publicRoutes } from './routes/public.js';
 import { teamRoutes } from './routes/team.js';
+import { verifyRoutes } from './routes/verify.js';
 import { webhookRoutes } from './routes/webhooks.js';
 import { extractRawJwt, blocklistKey } from './utils/jwt.js';
 import { validateEnv } from './utils/validateEnv.js';
@@ -128,6 +129,7 @@ if (process.env.NODE_ENV !== 'test') {
   await app.register(eventRoutes, { prefix: '/api/events' });
   await app.register(nfcRoutes, { prefix: '/api/nfc' });
   await app.register(teamRoutes, { prefix: '/api/teams' });
+  await app.register(verifyRoutes, { prefix: '/api/verify' });
   await app.register(webhookRoutes, { prefix: '/api/webhooks' });
 
   app.get('/health', async () => ({

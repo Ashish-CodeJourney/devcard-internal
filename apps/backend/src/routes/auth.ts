@@ -243,6 +243,40 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           })
         }
       }
+
+      const existing = await app.prisma.platformLink.findFirst({
+        where: {
+          userId: user.id.toString(), 
+          platform: 'github'
+        }
+      })
+
+      if(existing){
+        await app.prisma.platformLink.update({
+          where: {
+            id: existing.id
+          }, 
+          data: {
+            username: githubUser.login, 
+            url: `https://github.com/${githubUser.login}`, 
+            verified: true, 
+            verifiedAt: new Date()
+          }
+        })
+      }else{
+        await app.prisma.platformLink.create({
+          data: {
+            userId: user.id.toString(), 
+            platform: 'github',
+            username: githubUser.login,
+            url: `https://github.com/${githubUser.login}`, 
+            verified: true, 
+            verifiedAt: new Date()
+            
+          }
+        })
+      }
+
       
       const accessToken = signAccessToken(app, user)
       const refreshToken = generateRefreshToken()
@@ -457,6 +491,39 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           })
 
         }
+      }
+
+      const existing = await app.prisma.platformLink.findFirst({
+        where: {
+          userId: user.id.toString(), 
+          platform: 'google'
+        }
+      })
+
+      if(existing){
+        await app.prisma.platformLink.update({
+          where: {
+            id: existing.id
+          }, 
+          data: {
+            username: googleUser.email, 
+            url: `mailto:${googleUser.email}`, 
+            verified: true, 
+            verifiedAt: new Date()
+          }
+        })
+      }else{
+        await app.prisma.platformLink.create({
+          data: {
+            userId: user.id.toString(), 
+            platform: 'google',
+            username: googleUser.email,
+            url: `mailto:${googleUser.email}`, 
+            verified: true, 
+            verifiedAt: new Date()
+            
+          }
+        })
       }
       
       const accessToken = signAccessToken(app, user)
