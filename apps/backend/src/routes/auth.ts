@@ -99,10 +99,25 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   // GitHub OAuth callback
   app.get('/github/callback', async (request: FastifyRequest<{ Querystring: OAuthCallbackQuery }>, reply: FastifyReply) => {
     const storedState = request.cookies?.oauth_state;
+    const rawState = request.query.state as string | undefined;
+
+    // For mobile flows the callback must always return INTO the app — never a
+    // dead-end JSON page in the system browser — so the user sees a real error.
+    const mobileReturn = getMobileRedirectUri(rawState);
+    const fail = (message: string, status = 400) => {
+      // HTTP header values must be ASCII; strip anything else before it goes
+      // into the Location header, otherwise Node throws ERR_INVALID_CHAR.
+      const safe = message.replace(/[^\x20-\x7E]/g, '');
+      if (mobileReturn) {
+        return reply.redirect(`${mobileReturn}?error=${encodeURIComponent(safe)}`);
+      }
+      return reply.status(status).send({ error: safe });
+    };
+
     const parsed = oAuthCallbackSchema.safeParse(request.query);
     if (!parsed.success) {
       reply.clearCookie('oauth_state', { path: '/' });
-      return reply.status(400).send({ error: 'Invalid callback parameters' });
+      return fail('Invalid callback parameters');
     }
     const { code, state } = parsed.data;
 
@@ -112,7 +127,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     if ((!storedState || state !== storedState) && !redisState) {
       reply.clearCookie('oauth_state', { path: '/' });
-      return reply.status(400).send({ error: 'Invalid or missing OAuth state — possible CSRF attack' });
+      return fail('Invalid or missing OAuth state — possible CSRF attack');
     }
     reply.clearCookie('oauth_state', { path: '/' });
 
@@ -138,12 +153,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         'GitHub token exchange failed',
       );
 
-      return reply.status(400).send({
-        error: 'Failed to authenticate with GitHub',
-      });
+      return fail('GitHub rejected the sign-in request. Check the GitHub OAuth app configuration.');
     }
       const userRes = await fetch(GITHUB_USER_URL, { headers: { Authorization: `Bearer ${tokenData.access_token}` } });
-      const githubUser = (await userRes.json()) as GitHubUserResponse;;
+      const githubUser = (await userRes.json()) as GitHubUserResponse;
 
       let email = githubUser.email;
       if (!email) {
@@ -159,9 +172,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       }
 
       if (!email) {
-        return reply.status(400).send({
-          error: 'No email returned by GitHub',
-        });
+        return fail('GitHub did not return a verified email for your account.');
       }
 
       const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '');
@@ -280,7 +291,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.redirect(`${process.env.PUBLIC_APP_URL}/dashboard`);
     } catch (error) {
       app.log.error({ error }, 'GitHub auth error');
-      return reply.status(500).send({ error: 'Authentication failed' });
+      return fail('Authentication failed on the server. Please try again.', 500);
     }
   });
 
@@ -327,10 +338,21 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   // Google callback
   app.get('/google/callback', async (request: FastifyRequest<{ Querystring: OAuthCallbackQuery }>, reply: FastifyReply) => {
     const storedState = request.cookies?.oauth_state;
+    const rawState = request.query.state as string | undefined;
+
+    const mobileReturn = getMobileRedirectUri(rawState);
+    const fail = (message: string, status = 400) => {
+      const safe = message.replace(/[^\x20-\x7E]/g, '');
+      if (mobileReturn) {
+        return reply.redirect(`${mobileReturn}?error=${encodeURIComponent(safe)}`);
+      }
+      return reply.status(status).send({ error: safe });
+    };
+
     const parsed = oAuthCallbackSchema.safeParse(request.query);
     if (!parsed.success) {
       reply.clearCookie('oauth_state', { path: '/' });
-      return reply.status(400).send({ error: 'Invalid callback parameters' });
+      return fail('Invalid callback parameters');
     }
     const { code, state } = parsed.data;
 
@@ -340,7 +362,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     if ((!storedState || state !== storedState) && !redisState) {
       reply.clearCookie('oauth_state', { path: '/' });
-      return reply.status(400).send({ error: 'Invalid or missing OAuth state — possible CSRF attack' });
+      return fail('Invalid or missing OAuth state - possible CSRF attack');
     }
     reply.clearCookie('oauth_state', { path: '/' });
 
