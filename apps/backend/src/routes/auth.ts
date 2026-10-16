@@ -579,9 +579,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       return reply.redirect(`${process.env.PUBLIC_APP_URL}/dashboard`);
     } catch (error) {
-      handleDbError(error, request, reply)
+      // Single reply path: handleDbError() already sends, so calling it and then
+      // sending again would raise FST_ERR_REP_ALREADY_SENT. Return the failure
+      // to the app instead (mirrors the GitHub callback).
       app.log.error({ error }, 'Google auth error');
-      return reply.status(500).send({ error: 'Authentication failed' });
+      return fail('Authentication failed on the server. Please try again.', 500);
     }
   });
 
