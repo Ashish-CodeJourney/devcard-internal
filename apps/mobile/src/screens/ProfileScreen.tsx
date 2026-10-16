@@ -27,6 +27,9 @@ type PlatformLink = {
   platform: string;
   username: string;
   url: string;
+  verified?: boolean;
+  checkedAt?: string | null;
+  verificationStatus?: 'verified' | 'checked' | 'unverified';
 };
 
 export default function ProfileScreen() {
@@ -352,6 +355,13 @@ export default function ProfileScreen() {
                         onPress: () => setDeleteTarget(link),
                       },
                     ]}
+                    right={
+                      link.verified ? (
+                        <Icon name="shield-check" size={16} color={colors.accent} />
+                      ) : link.checkedAt ? (
+                        <Icon name="magnify" size={16} color={colors.textSecondary} />
+                      ) : null
+                    }
                   />
                 </View>
               </View>

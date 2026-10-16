@@ -42,6 +42,11 @@ interface PlatformLink {
   username: string;
   url: string;
   displayOrder: number;
+  /** Ownership proven via the provider's OAuth. */
+  verified?: boolean;
+  /** Handle confirmed to exist via a public API (ownership not proven). */
+  checkedAt?: string | null;
+  verificationStatus?: 'verified' | 'checked' | 'unverified';
 }
 
 interface ProfileData {
@@ -439,9 +444,26 @@ export default function DevCardViewScreen({ navigation, route }: Props) {
                   </View>
 
                   <View style={styles.tileInfo}>
-                    <AppText variant="title" numberOfLines={1}>
-                      {platform?.name || link.platform}
-                    </AppText>
+                    <View style={styles.tileNameRow}>
+                      <AppText variant="title" numberOfLines={1} style={styles.tileName}>
+                        {platform?.name || link.platform}
+                      </AppText>
+                      {(link.verificationStatus ?? (link.verified ? 'verified' : link.checkedAt ? 'checked' : 'unverified')) === 'verified' ? (
+                        <View style={[styles.verifyBadge, { borderColor: colors.accentBorder, backgroundColor: colors.accentSoft }]}>
+                          <Icon name="shield-check" size={11} color={colors.accent} />
+                          <AppText variant="eyebrow" tone="accent" style={styles.verifyBadgeText}>
+                            VERIFIED
+                          </AppText>
+                        </View>
+                      ) : (link.verificationStatus ?? 'unverified') === 'checked' ? (
+                        <View style={[styles.verifyBadge, { borderColor: colors.border, backgroundColor: colors.bgElevated }]}>
+                          <Icon name="magnify" size={11} color={colors.textSecondary} />
+                          <AppText variant="eyebrow" tone="secondary" style={styles.verifyBadgeText}>
+                            CHECKED
+                          </AppText>
+                        </View>
+                      ) : null}
+                    </View>
                     <AppText variant="mono" tone="secondary" numberOfLines={1}>
                       @{link.username}
                     </AppText>
@@ -546,6 +568,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tileInfo: { flex: 1, marginLeft: SPACING.md },
+  tileNameRow: { flexDirection: 'row', alignItems: 'center' },
+  tileName: { flexShrink: 1 },
+  verifyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.full,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: SPACING.sm,
+  },
+  verifyBadgeText: { marginLeft: 3, fontSize: 8 },
   tileAction: {
     flexDirection: 'row',
     alignItems: 'center',
