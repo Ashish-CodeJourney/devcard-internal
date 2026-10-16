@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Share } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, TouchableOpacity, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
@@ -16,10 +16,12 @@ import {
   IconName,
   Pill,
   SectionHeader,
+  Sheet,
   Skeleton,
   Surface,
 } from '../components/ui';
 import { CardVisual, CardPreset } from '../components/CardVisual';
+import { useContacts } from '../hooks/useContacts';
 import { SPACING, BORDER_RADIUS, LAYOUT } from '../theme/tokens';
 
 const CARD_PRESETS_KEY = 'devcard.cardPresets';
@@ -42,12 +44,17 @@ export default function HomeScreen() {
   const { token, user } = useAuth();
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
+  const { contacts, refetch: refetchContacts } = useContacts();
 
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<Card[]>([]);
   const [links, setLinks] = useState<PlatformLink[]>([]);
   const [presets, setPresets] = useState<Record<string, CardPreset>>({});
+  const [showContacts, setShowContacts] = useState(false);
+
+  // useContacts already sorts by most recently saved first.
+  const recentContacts = contacts.slice(0, 5);
 
   const fetchData = useCallback(async () => {
     try {
@@ -74,7 +81,9 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchData();
-    }, [fetchData]),
+      // Keep the scanned-cards shortcut current after a scan.
+      refetchContacts();
+    }, [fetchData, refetchContacts]),
   );
 
   const onRefresh = async () => {
@@ -106,21 +115,14 @@ export default function HomeScreen() {
     );
   }
 
-  const initials = user?.displayName || user?.username || 'Dev';
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}>
-        {/* ── Identity ── */}
-        <Pressable
-          onPress={() => navigation.navigate('Profile')}
-          accessibilityRole="button"
-          accessibilityLabel="Open profile"
-          style={styles.identity}>
-          <Avatar uri={user?.avatarUrl} name={initials} size={52} ring />
+        {/* ── Header: identity + scanned-cards shortcut ── */}
+        <View style={styles.identity}>
           <View style={styles.identityText}>
             <AppText variant="eyebrow" tone="muted">
               WELCOME BACK
@@ -134,8 +136,22 @@ export default function HomeScreen() {
               {user?.company ? ` · ${user.company}` : ''}
             </AppText>
           </View>
-          <Icon name="chevron-right" size={22} color={colors.textMuted} />
-        </Pressable>
+
+          <TouchableOpacity
+            onPress={() => setShowContacts(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Recently scanned cards"
+            style={[styles.contactsBtn, { borderColor: colors.border, backgroundColor: colors.bgSecondary }]}>
+            <Icon name="account-multiple-outline" size={20} color={colors.textSecondary} />
+            {contacts.length > 0 ? (
+              <View style={[styles.contactsBadge, { backgroundColor: colors.accent }]}>
+                <AppText variant="eyebrow" color={colors.textInverse} style={styles.contactsBadgeText}>
+                  {contacts.length > 9 ? '9+' : contacts.length}
+                </AppText>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        </View>
 
         {/* ── Primary card ── */}
         <SectionHeader title="Primary card" action={{ label: 'Manage', icon: 'chevron-right', onPress: () => navigation.navigate('Cards') }} />
@@ -209,6 +225,61 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Recently scanned cards ── */}
+      <Sheet
+        visible={showContacts}
+        onClose={() => setShowContacts(false)}
+        eyebrow={`RECENT · ${contacts.length}`}
+        title="Scanned cards"
+        scrollable
+        footer={
+          contacts.length > 5 ? (
+            <Button
+              label="View all scanned cards"
+              variant="tertiary"
+              icon="account-multiple-outline"
+              onPress={() => {
+                setShowContacts(false);
+                navigation.navigate('Contacts');
+              }}
+            />
+          ) : null
+        }>
+        {recentContacts.length === 0 ? (
+          <EmptyState
+            icon="account-multiple-outline"
+            title="No scanned cards yet"
+            description="Cards you scan with the Scan tab are saved here."
+          />
+        ) : (
+          recentContacts.map(contact => (
+            <Pressable
+              key={contact.username}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${contact.displayName}`}
+              onPress={() => {
+                setShowContacts(false);
+                navigation.navigate('DevCardView', { username: contact.username });
+              }}
+              style={({ pressed }) => [
+                styles.contactRow,
+                { borderColor: colors.border, backgroundColor: colors.bgCard, opacity: pressed ? 0.85 : 1 },
+              ]}>
+              <Avatar uri={contact.avatarUrl} name={contact.displayName} size={44} />
+              <View style={styles.contactBody}>
+                <AppText variant="title" numberOfLines={1}>
+                  {contact.displayName}
+                </AppText>
+                <AppText variant="mono" tone="secondary" numberOfLines={1}>
+                  @{contact.username}
+                </AppText>
+              </View>
+              <Icon name="chevron-right" size={20} color={colors.textMuted} />
+            </Pressable>
+          ))
+        )}
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -262,7 +333,36 @@ const styles = StyleSheet.create({
     paddingTop: LAYOUT.topOffset,
     paddingBottom: SPACING.lg,
   },
-  identityText: { flex: 1, marginLeft: SPACING.md },
+  identityText: { flex: 1, marginRight: SPACING.md },
+  contactsBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactsBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactsBadgeText: { fontSize: 9, lineHeight: 12 },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  contactBody: { flex: 1, marginLeft: SPACING.md },
   heroActions: { flexDirection: 'row', marginTop: SPACING.md, paddingHorizontal: SPACING.lg },
   heroBtn: { flex: 1, marginHorizontal: SPACING.xs },
   sectionSpacing: { marginTop: SPACING.xl, paddingHorizontal: SPACING.lg },

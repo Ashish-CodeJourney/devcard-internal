@@ -11,7 +11,7 @@ import {
   Surface,
   TextField,
 } from '../components/ui';
-import { SPACING } from '../theme/tokens';
+import { SPACING, LAYOUT } from '../theme/tokens';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/MainTabs';
 
@@ -34,8 +34,15 @@ export default function EventsScreen({ navigation }: Props) {
   };
 
   return (
-    <Screen edges={['bottom']}>
+    <Screen>
       <View style={styles.content}>
+        <View style={styles.header}>
+          <AppText variant="eyebrow" tone="muted">
+            DISCOVER
+          </AppText>
+          <AppText variant="h1">Events</AppText>
+        </View>
+
         <SectionHeader title="Join an event" />
 
         <Surface radius="xl" padding="lg" style={styles.card}>
@@ -68,7 +75,8 @@ export default function EventsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, padding: SPACING.lg },
+  content: { flex: 1, paddingHorizontal: SPACING.lg, paddingTop: LAYOUT.topOffset, paddingBottom: SPACING.lg },
+  header: { marginBottom: SPACING.lg },
   card: { marginBottom: SPACING.lg },
   intro: { marginBottom: SPACING.md },
 });

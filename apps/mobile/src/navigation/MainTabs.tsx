@@ -28,7 +28,7 @@ import { ViewsScreen } from '../screens/ViewsScreen';
 
 export type MainTabsParamList = {
   Home: undefined;
-  Contacts: undefined;
+  Events: undefined;
   Scan: undefined;
   Cards: { cardId?: string } | undefined;
   Profile: undefined;
@@ -52,7 +52,7 @@ export type RootStackParamList = {
   ConnectPlatforms: undefined;
   Views: undefined;
   Links: undefined;
-  Events: undefined;
+  Contacts: undefined;
   EventDetail: { slug: string; name: string };
   Teams: undefined;
   TeamDetail: { slug: string; name: string };
@@ -64,7 +64,7 @@ export type RootStackParamList = {
 
 const TAB_ICONS: Record<string, { active: IconName; inactive: IconName }> = {
   Home: { active: ICONS.homeActive, inactive: ICONS.home },
-  Contacts: { active: ICONS.contactsActive, inactive: ICONS.contacts },
+  Events: { active: 'calendar-month', inactive: 'calendar-month-outline' },
   Cards: { active: ICONS.cardsActive, inactive: ICONS.cards },
   Profile: { active: ICONS.profileActive, inactive: ICONS.profile },
 };
@@ -111,7 +111,7 @@ function TabNavigator() {
         tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
       })}>
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Contacts" component={ContactsScreen} />
+      <Tab.Screen name="Events" component={EventsScreen} />
       <Tab.Screen
         name="Scan"
         component={ScanScreen}
@@ -166,7 +166,7 @@ export default function MainTabs() {
         options={{ title: 'Card Views', headerShown: true }}
       />
       <Stack.Screen name="Links" component={LinksScreen} options={{ headerShown: true, title: 'Platform Links' }} />
-      <Stack.Screen name="Events" component={EventsScreen} options={{ headerShown: true, title: 'Events' }} />
+      <Stack.Screen name="Contacts" component={ContactsScreen} options={{ headerShown: true, title: 'Scanned Cards' }} />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ headerShown: true, title: 'Event' }} />
       <Stack.Screen name="Teams" component={TeamsScreen} options={{ headerShown: true, title: 'Teams' }} />
       <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: true, title: 'Team' }} />
