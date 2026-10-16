@@ -29,3 +29,14 @@ export function getMobileRedirectUri(state?: string): string | null {
     return null;
   }
 }
+
+/**
+ * States that finish out-of-band — the mobile app (`mobile_`) or the website
+ * (`web_`). Neither can rely on the oauth_state cookie, because the flow returns
+ * through a browser that does not carry our cookies (and, for the website, a
+ * cross-site request where SameSite=Lax cookies are not sent at all). For these
+ * the nonce is kept server-side in Redis instead.
+ */
+export function isOutOfBandState(state?: string): boolean {
+  return Boolean(state && (state.startsWith('mobile_') || state.startsWith('web_')));
+}

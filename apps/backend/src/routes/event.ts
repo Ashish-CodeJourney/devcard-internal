@@ -1,7 +1,74 @@
 import {generateUniqueSlug} from '../utils/slug.js'
-import { createEventSchema} from '../validations/event.validation.js';
+import {
+    createEventSchema,
+    listEventsQuerySchema,
+    updateEventStatusSchema,
+} from '../validations/event.validation.js';
+import { isAdmin } from '../utils/roles.js';
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+
+// ─── Discovery helpers ────────────────────────────────────────────────────────
+
+/** Only approved events are public; owners and admins can see the rest. */
+const PUBLIC_WHERE = { status: 'APPROVED' as const };
+
+function parseBbox(bbox?: string): { minLat: number; minLng: number; maxLat: number; maxLng: number } | null {
+    if (!bbox) return null;
+    const parts = bbox.split(',').map(Number);
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null;
+    const [minLat, minLng, maxLat, maxLng] = parts;
+    return { minLat, minLng, maxLat, maxLng };
+}
+
+/** Great-circle distance in km — used to sort/bound "nearby" results. */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+const EVENT_CARD_SELECT = {
+    id: true,
+    name: true,
+    slug: true,
+    location: true,
+    city: true,
+    country: true,
+    kind: true,
+    status: true,
+    latitude: true,
+    longitude: true,
+    startDate: true,
+    endDate: true,
+    url: true,
+    coverImageUrl: true,
+} as const;
+
+/**
+ * Best-effort identity for public routes that behave differently for the owner
+ * or an admin. Never fails the request — anonymous callers simply get null.
+ */
+async function optionalUserId(app: FastifyInstance, request: FastifyRequest): Promise<string | null> {
+    const header = request.headers.authorization;
+    const bearer = header?.startsWith('Bearer ') ? header.slice(7) : undefined;
+    const cookieToken = (request as unknown as { cookies?: Record<string, string> }).cookies?.access_Token;
+    const token = bearer ?? cookieToken;
+    if (!token) return null;
+    try {
+        const payload = app.jwt.verify(token) as { id?: string; sub?: string };
+        return payload.id ?? payload.sub ?? null;
+    } catch {
+        return null;
+    }
+}
+
+
 
 
 type EventDetails = {
@@ -16,7 +83,17 @@ type EventDetails = {
     startDate: Date;
     endDate: Date;
     createdAt: Date;
-    attendeesCount: number
+    attendeesCount: number;
+    // Discovery / moderation
+    kind: string;
+    status: string;
+    latitude: number | null;
+    longitude: number | null;
+    city: string | null;
+    country: string | null;
+    url: string | null;
+    coverImageUrl: string | null;
+    rejectionReason: string | null;
 }
 
 type AttendeePublicProfile = {
@@ -59,14 +136,176 @@ type EventWithAttendees = {
 }
 
 export async function eventRoutes(app:FastifyInstance): Promise<void> {
-        app.post<{Body: { name: string; description?: string; startDate: string; location: string; endDate: string; isPublic?: boolean; }}>('/', { preHandler: [(req, reply) => app.authenticate(req, reply)] }, async (request, reply) => {
+    // ─── Browse (public) ───
+    // Only APPROVED events are ever public. Unapproved ones surface via /mine
+    // (owner) or /admin/queue (moderator).
+    app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+        const parsed = listEventsQuerySchema.safeParse(request.query);
+        if (!parsed.success) {
+            return reply.status(400).send({ error: 'Invalid query' });
+        }
+        const { q, kind, from, to, bbox, page, limit } = parsed.data;
+
+        const take = Math.min(Number(limit) || 20, 100);
+        const currentPage = Math.max(Number(page) || 1, 1);
+
+        const where: any = { ...PUBLIC_WHERE };
+        if (kind) where.kind = kind;
+        if (q) {
+            where.OR = [
+                { name: { contains: q, mode: 'insensitive' } },
+                { location: { contains: q, mode: 'insensitive' } },
+                { city: { contains: q, mode: 'insensitive' } },
+                { country: { contains: q, mode: 'insensitive' } },
+            ];
+        }
+        if (from || to) {
+            where.startDate = {};
+            if (from) where.startDate.gte = new Date(from);
+            if (to) where.startDate.lte = new Date(to);
+        }
+
+        const box = parseBbox(bbox);
+        if (box) {
+            where.latitude = { gte: box.minLat, lte: box.maxLat };
+            where.longitude = { gte: box.minLng, lte: box.maxLng };
+        }
+
+        try {
+            const [events, total] = await Promise.all([
+                app.prisma.event.findMany({
+                    where,
+                    orderBy: { startDate: 'asc' },
+                    skip: (currentPage - 1) * take,
+                    take,
+                    select: EVENT_CARD_SELECT,
+                }),
+                app.prisma.event.count({ where }),
+            ]);
+            return reply.send({ events, pagination: { page: currentPage, limit: take, total } });
+        } catch (error) {
+            app.log.error(error);
+            return reply.status(500).send({ error: 'Failed to list events' });
+        }
+    });
+
+    // ─── Nearby (public) ───
+    app.get('/nearby', async (request: FastifyRequest, reply: FastifyReply) => {
+        const query = request.query as { lat?: string; lng?: string; radiusKm?: string };
+        const lat = Number(query.lat);
+        const lng = Number(query.lng);
+        const radiusKm = Math.min(Number(query.radiusKm) || 100, 20000);
+
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            return reply.status(400).send({ error: 'lat and lng are required' });
+        }
+
+        // Cheap bounding-box prefilter, then an exact great-circle cut.
+        const latDelta = radiusKm / 111;
+        const lngDelta = radiusKm / (111 * Math.max(Math.cos((lat * Math.PI) / 180), 0.01));
+
+        try {
+            const candidates = await app.prisma.event.findMany({
+                where: {
+                    ...PUBLIC_WHERE,
+                    latitude: { gte: lat - latDelta, lte: lat + latDelta },
+                    longitude: { gte: lng - lngDelta, lte: lng + lngDelta },
+                },
+                orderBy: { startDate: 'asc' },
+                take: 200,
+                select: EVENT_CARD_SELECT,
+            });
+
+            const events = candidates
+                .map(event => ({
+                    ...event,
+                    distanceKm:
+                        event.latitude !== null && event.longitude !== null
+                            ? Math.round(haversineKm(lat, lng, event.latitude, event.longitude) * 10) / 10
+                            : null,
+                }))
+                .filter(event => event.distanceKm !== null && event.distanceKm <= radiusKm)
+                .sort((a, b) => (a.distanceKm as number) - (b.distanceKm as number));
+
+            return reply.send({ events });
+        } catch (error) {
+            app.log.error(error);
+            return reply.status(500).send({ error: 'Failed to search nearby events' });
+        }
+    });
+
+    // ─── My submissions (owner, all statuses) ───
+    app.get('/mine', { preHandler: [(req, reply) => app.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+            const events = await app.prisma.event.findMany({
+                where: { organizerId: request.user.id },
+                orderBy: { createdAt: 'desc' },
+                select: { ...EVENT_CARD_SELECT, reviewedAt: true, rejectionReason: true },
+            });
+            return reply.send({ events });
+        } catch (error) {
+            app.log.error(error);
+            return reply.status(500).send({ error: 'Failed to load your events' });
+        }
+    });
+
+    // ─── Moderation queue (admin) ───
+    app.get('/admin/queue', { preHandler: [(req, reply) => app.authenticate(req, reply)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+        if (!(await isAdmin(app, request.user.id))) {
+            return reply.status(403).send({ error: 'Admin access required' });
+        }
+        try {
+            const events = await app.prisma.event.findMany({
+                where: { status: { in: ['PENDING', 'REJECTED'] } },
+                orderBy: { createdAt: 'asc' },
+                include: {
+                    organizer: { select: { username: true, displayName: true, avatarUrl: true } },
+                },
+            });
+            return reply.send({ events });
+        } catch (error) {
+            app.log.error(error);
+            return reply.status(500).send({ error: 'Failed to load the moderation queue' });
+        }
+    });
+
+    // ─── Approve / reject (admin) ───
+    app.patch<{ Params: { slug: string } }>('/:slug/status', { preHandler: [(req, reply) => app.authenticate(req, reply)] }, async (request: FastifyRequest<{ Params: { slug: string } }>, reply: FastifyReply) => {
+        if (!(await isAdmin(app, request.user.id))) {
+            return reply.status(403).send({ error: 'Admin access required' });
+        }
+        const parsed = updateEventStatusSchema.safeParse(request.body);
+        if (!parsed.success) {
+            return reply.status(400).send({ error: 'Invalid status' });
+        }
+
+        const event = await app.prisma.event.findUnique({ where: { slug: request.params.slug } });
+        if (!event) return reply.status(404).send({ error: 'Event not found' });
+
+        const { status, reason } = parsed.data;
+        const updated = await app.prisma.event.update({
+            where: { id: event.id },
+            data: {
+                status,
+                reviewedById: request.user.id,
+                reviewedAt: new Date(),
+                rejectionReason: status === 'REJECTED' ? (reason ?? null) : null,
+            },
+        });
+        return reply.send(updated);
+    });
+
+    app.post<{Body: Record<string, unknown>}>('/', { preHandler: [(req, reply) => app.authenticate(req, reply)] }, async (request, reply) => {
          const userId = request.user.id;
         const parsed = createEventSchema.safeParse(request.body); 
         if(!parsed.success){
             return reply.status(400).send({error: 'Bad request'})
         }
         
-        const {name, description, startDate, endDate, isPublic ,location} = parsed.data
+        const {
+            name, description, startDate, endDate, isPublic, location,
+            kind, latitude, longitude, city, country, url, coverImageUrl,
+        } = parsed.data
 
         const finalSlug = await generateUniqueSlug(name, async(slug) => {
             const existing = await app.prisma.event.findUnique({where: {slug}})
@@ -74,8 +313,9 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
             return !!existing
         })
 
-        const startDateObj = new Date(startDate); 
-        const endDateObj = new Date(endDate); 
+        // Submissions are moderated. Admins publish straight away so they can
+        // seed the map without approving their own entries.
+        const status = (await isAdmin(app, userId)) ? 'APPROVED' : 'PENDING'
 
         try {
             const newEvent = await app.prisma.event.create({
@@ -84,16 +324,24 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
                     description, 
                     slug: finalSlug, 
                     location,
-                    startDate: startDateObj, 
-                    endDate: endDateObj, 
+                    startDate: new Date(startDate), 
+                    endDate: new Date(endDate), 
                     isPublic: isPublic ?? true, 
-                    organizerId: userId
+                    organizerId: userId,
+                    kind: kind ?? 'HACKATHON',
+                    latitude: latitude ?? null,
+                    longitude: longitude ?? null,
+                    city: city ?? null,
+                    country: country ?? null,
+                    url: url ?? null,
+                    coverImageUrl: coverImageUrl ?? null,
+                    status,
                 }
             })
 
             return reply.status(201).send(newEvent); 
-        } catch (_error) {
-            app.log.error('Failed to create event'); 
+        } catch (error) {
+            app.log.error(error); 
             return reply.status(500).send({error: 'Failed to create event'})
         }
         
@@ -124,6 +372,17 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
             return reply.status(404).send({error: 'Event not found'})
         }
 
+        // Unapproved events are only visible to their organiser or an admin.
+        if (details.status !== 'APPROVED') {
+            const viewerId = await optionalUserId(app, request);
+            const allowed =
+                viewerId !== null &&
+                (viewerId === details.organizerId || (await isAdmin(app, viewerId)));
+            if (!allowed) {
+                return reply.status(404).send({ error: 'Event not found' });
+            }
+        }
+
         const response: EventDetails = {
             id: details.id,
             name: details.name,
@@ -136,7 +395,17 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
             startDate: details.startDate,
             endDate: details.endDate,
             createdAt: details.createdAt,
-            attendeesCount: details._count.attendees
+            attendeesCount: details._count.attendees,
+            // Discovery / moderation
+            kind: details.kind,
+            status: details.status,
+            latitude: details.latitude,
+            longitude: details.longitude,
+            city: details.city,
+            country: details.country,
+            url: details.url,
+            coverImageUrl: details.coverImageUrl,
+            rejectionReason: details.rejectionReason,
         }
         
         return response; 

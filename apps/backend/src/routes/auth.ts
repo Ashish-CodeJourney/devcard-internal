@@ -1,6 +1,6 @@
 import { handleDbError, isGitHubTokenError, isGoogleTokenError } from '../utils/error.util.js';
 import { extractRawJwt, blocklistKey, signAccessToken  } from '../utils/jwt.js';
-import { buildOAuthState, getMobileRedirectUri } from '../utils/oauth.js';
+import { buildOAuthState, getMobileRedirectUri, isOutOfBandState } from '../utils/oauth.js';
 import { generateRefreshToken, hashIp, hashRefreshToken } from '../utils/refreshToken.js';
 import { oAuthCallbackSchema, oAuthStartSchema } from '../validations/auth.validation.js';
 
@@ -80,7 +80,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       maxAge: 10 * 60,
     });
 
-    if (state.startsWith('mobile_') && app.hasDecorator('redis')) {
+    if (isOutOfBandState(state) && app.hasDecorator('redis')) {
       await app.redis.set(`oauth_state:${state}`, '1', 'EX', 10 * 60);
     }
 
@@ -121,7 +121,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
     const { code, state } = parsed.data;
 
-    const redisState = state.startsWith('mobile_') && app.hasDecorator('redis')
+    const redisState = isOutOfBandState(state) && app.hasDecorator('redis')
       ? await app.redis.getdel(`oauth_state:${state}`)
       : null;
 
@@ -295,16 +295,20 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         }
       })
 
-      if (request.query.state?.startsWith('mobile_')) {
+      // App and website both finish out-of-band: mint a one-time code and let the
+      // client swap it for tokens, so no cross-site cookie is required.
+      if (isOutOfBandState(request.query.state)) {
+        const isWeb = request.query.state?.startsWith('web_');
         const exchangeCode = crypto.randomUUID();
         await app.redis.set(
           `mobile_exchange:${exchangeCode}`,
           JSON.stringify({ accessToken, refreshToken }),
           'EX', 60
         );
-        const mobileRedirect = getMobileRedirectUri(request.query.state) 
-          || process.env.MOBILE_REDIRECT_URI;
-        return reply.redirect(`${mobileRedirect}?code=${exchangeCode}`);
+        const target = isWeb
+          ? `${process.env.PUBLIC_APP_URL}/auth/callback`
+          : (getMobileRedirectUri(request.query.state) || process.env.MOBILE_REDIRECT_URI);
+        return reply.redirect(`${target}?code=${exchangeCode}`);
       }
 
       reply.setCookie('access_Token', accessToken,{
@@ -353,7 +357,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       maxAge: 10 * 60,
     });
 
-    if (state.startsWith('mobile_') && app.hasDecorator('redis')) {
+    if (isOutOfBandState(state) && app.hasDecorator('redis')) {
       await app.redis.set(`oauth_state:${state}`, '1', 'EX', 10 * 60);
     }
     const params = new URLSearchParams({
@@ -391,7 +395,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
     const { code, state } = parsed.data;
 
-    const redisState = state.startsWith('mobile_') && app.hasDecorator('redis')
+    const redisState = isOutOfBandState(state) && app.hasDecorator('redis')
       ? await app.redis.getdel(`oauth_state:${state}`)
       : null;
 
@@ -543,16 +547,20 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         }
       })
 
-      if (request.query.state?.startsWith('mobile_')) {
+      // App and website both finish out-of-band: mint a one-time code and let the
+      // client swap it for tokens, so no cross-site cookie is required.
+      if (isOutOfBandState(request.query.state)) {
+        const isWeb = request.query.state?.startsWith('web_');
         const exchangeCode = crypto.randomUUID();
         await app.redis.set(
           `mobile_exchange:${exchangeCode}`,
           JSON.stringify({ accessToken, refreshToken }),
           'EX', 60
         );
-        const mobileRedirect = getMobileRedirectUri(request.query.state) 
-          || process.env.MOBILE_REDIRECT_URI;
-        return reply.redirect(`${mobileRedirect}?code=${exchangeCode}`);
+        const target = isWeb
+          ? `${process.env.PUBLIC_APP_URL}/auth/callback`
+          : (getMobileRedirectUri(request.query.state) || process.env.MOBILE_REDIRECT_URI);
+        return reply.redirect(`${target}?code=${exchangeCode}`);
       }
 
       reply.setCookie('access_Token', accessToken,{

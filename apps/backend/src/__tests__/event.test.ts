@@ -22,6 +22,16 @@ const MOCK_EVENT = {
   endDate: new Date('2025-09-02T18:00:00Z'),
   isPublic: true,
   createdAt: new Date('2025-01-01T00:00:00Z'),
+  // Discovery / moderation (added with the events discovery feature)
+  kind: 'CONFERENCE',
+  status: 'APPROVED',
+  latitude: 37.7749,
+  longitude: -122.4194,
+  city: 'San Francisco',
+  country: 'United States',
+  url: null,
+  coverImageUrl: null,
+  rejectionReason: null,
 };
 
 const MOCK_USER_PROFILE = {
@@ -189,8 +199,8 @@ describe('Events API', () => {
       expect(res.statusCode).toBe(400);
     });
 
-    it('400 — rejects location longer than 100 characters', async () => {
-      const res = await createEvent(app, { ...validBody, location: 'A'.repeat(101) });
+    it('400 — rejects location longer than 200 characters', async () => {
+      const res = await createEvent(app, { ...validBody, location: 'A'.repeat(201) });
       expect(res.statusCode).toBe(400);
     });
 

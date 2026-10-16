@@ -231,6 +231,19 @@ model FollowLog {
   @@map("follow_logs")
 }
 
+enum EventKind {
+  HACKATHON
+  MEETUP
+  CONFERENCE
+  OTHER
+}
+
+enum EventStatus {
+  PENDING   // submitted, awaiting an admin decision
+  APPROVED  // publicly visible and discoverable on the map
+  REJECTED  // declined by an admin
+}
+
 model Event {
   id          String   @id @default(uuid())
   name        String
@@ -243,9 +256,26 @@ model Event {
   isPublic    Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
 
+  // ─── Discovery / moderation ───
+  // Nothing is publicly visible until an admin approves it.
+  kind            EventKind   @default(HACKATHON)
+  status          EventStatus @default(PENDING)
+  latitude        Float?
+  longitude       Float?
+  city            String?
+  country         String?
+  url             String? // external registration link
+  coverImageUrl   String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+
   attendees EventAttendee[]
   organizer User            @relation(fields: [organizerId], references: [id])
 
+  @@index([status, startDate])
+  @@index([latitude, longitude])
+  @@index([kind])
   @@map("events")
 }
 
