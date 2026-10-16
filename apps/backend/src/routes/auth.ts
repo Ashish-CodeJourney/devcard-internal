@@ -726,6 +726,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         pronouns: true,
         role: true,
         company: true,
+        authRole: true,
         avatarUrl: true,
         accentColor: true,
         createdAt: true,

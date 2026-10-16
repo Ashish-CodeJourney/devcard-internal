@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../lib/theme';
+import { useAuth } from '../lib/auth';
 import './Navbar.css';
 
 type IconState = 'idle' | 'hiding' | 'showing';
@@ -26,7 +27,7 @@ const MoonIcon = () => (
 );
 
 const DevCardLogo = () => (
-  <svg xmlns="http://www.apache.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect width="18" height="14" x="3" y="5" rx="2" ry="2"></rect>
     <line x1="3" x2="21" y1="9" y2="9"></line>
     <line x1="13" x2="13.01" y1="15" y2="15"></line>
@@ -35,8 +36,11 @@ const DevCardLogo = () => (
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const { user, isAdmin, login, logout } = useAuth();
+  const navigate = useNavigate();
   const [iconState, setIconState] = useState<IconState>('idle');
   const [displayedTheme, setDisplayedTheme] = useState(theme);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleToggle = () => {
     if (iconState !== 'idle') return;
@@ -46,11 +50,17 @@ export default function Navbar() {
   const handleAnimationEnd = () => {
     if (iconState === 'hiding') {
       toggleTheme();
-      setDisplayedTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+      setDisplayedTheme(t => (t === 'dark' ? 'light' : 'dark'));
       setIconState('showing');
     } else if (iconState === 'showing') {
       setIconState('idle');
     }
+  };
+
+  const handleSignOut = () => {
+    logout();
+    setMenuOpen(false);
+    navigate('/');
   };
 
   return (
@@ -60,20 +70,61 @@ export default function Navbar() {
           <DevCardLogo />
           <span className="logo-text">DevCard</span>
         </Link>
-        <button
-          className="theme-toggle"
-          onClick={handleToggle}
-          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          id="theme-toggle-btn"
-        >
-          <span
-            className={`theme-toggle-icon ${iconState !== 'idle' ? iconState : ''}`}
-            onAnimationEnd={handleAnimationEnd}
-            aria-hidden="true"
-          >
-            {displayedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </span>
-        </button>
+
+        <div className="nav-right">
+          <Link to="/events" className="nav-link" id="nav-events">Events</Link>
+          <Link to="/leaderboard" className="nav-link" id="nav-leaderboard">Leaderboard</Link>
+
+          {user ? (
+            <div className="nav-account">
+              <button
+                type="button"
+                className="nav-account-button"
+                onClick={() => setMenuOpen(open => !open)}
+                aria-expanded={menuOpen}>
+                <span className="nav-account-name">{user.displayName || user.username}</span>
+              </button>
+              {menuOpen && (
+                <div className="nav-menu glass">
+                  <Link to="/events/mine" onClick={() => setMenuOpen(false)}>My submissions</Link>
+                  <Link to="/events/new" onClick={() => setMenuOpen(false)}>Submit an event</Link>
+                  <Link to={`/u/${user.username}`} onClick={() => setMenuOpen(false)}>My profile</Link>
+                  {isAdmin && <Link to="/admin/events" onClick={() => setMenuOpen(false)}>Moderation queue</Link>}
+                  <button type="button" onClick={handleSignOut}>Sign out</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="nav-account">
+              <button
+                type="button"
+                className="nav-signin"
+                onClick={() => setMenuOpen(open => !open)}
+                aria-expanded={menuOpen}>
+                Sign in
+              </button>
+              {menuOpen && (
+                <div className="nav-menu glass">
+                  <button type="button" onClick={() => login('github')}>Continue with GitHub</button>
+                  <button type="button" onClick={() => login('google')}>Continue with Google</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            className="theme-toggle"
+            onClick={handleToggle}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            id="theme-toggle-btn">
+            <span
+              className={`theme-toggle-icon ${iconState !== 'idle' ? iconState : ''}`}
+              onAnimationEnd={handleAnimationEnd}
+              aria-hidden="true">
+              {displayedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </span>
+          </button>
+        </div>
       </div>
     </nav>
   );

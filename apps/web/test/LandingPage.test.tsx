@@ -2,13 +2,16 @@ import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, it, expect } from 'vitest';
 import { ThemeProvider } from '../src/lib/theme';
+import { AuthProvider } from '../src/lib/auth';
 import LandingPage from '../src/pages/LandingPage';
 
 describe('LandingPage', () => {
   const renderWithRouter = (ui: React.ReactElement) => {
     return render(
       <BrowserRouter>
-        <ThemeProvider>{ui}</ThemeProvider>
+        <ThemeProvider>
+          <AuthProvider>{ui}</AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     );
   };

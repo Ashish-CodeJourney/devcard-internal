@@ -69,3 +69,94 @@
 .theme-toggle-icon.showing {
   animation: icon-show 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+/* ─── Navigation + account ─── */
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nav-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.nav-account {
+  position: relative;
+}
+
+.nav-signin,
+.nav-account-button {
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.nav-signin:hover,
+.nav-account-button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.nav-account-name {
+  display: inline-block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+}
+
+.nav-menu a,
+.nav-menu button {
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-menu a:hover,
+.nav-menu button:hover {
+  background: var(--bg-secondary);
+}
+
+@media (max-width: 620px) {
+  .nav-link {
+    display: none;
+  }
+}
