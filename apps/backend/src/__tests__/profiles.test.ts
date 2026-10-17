@@ -28,7 +28,16 @@ const mockPrisma = {
     findFirst: vi.fn(),
     update: vi.fn(),
   },
+  platformLink: {
+    aggregate: vi.fn(),
+    create: vi.fn(),
+    findFirst: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
 };
+
+const mockPlatformLink = mockPrisma.platformLink;
 
 async function buildApp():Promise<FastifyInstance> {
   const app = Fastify();
@@ -148,5 +157,42 @@ describe('PUT /api/profiles/me', () => {
 
     expect(res.statusCode).toBe(200);
     expect(mockPrisma.user.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/profiles/me/links', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('accepts a username-only link for a platform with no profile URL (Discord)', async () => {
+    mockPlatformLink.aggregate.mockResolvedValue({ _max: { displayOrder: null } });
+    mockPlatformLink.create.mockImplementation(async ({ data }: any) => ({ id: 'link-new', ...data }));
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/profiles/me/links',
+      payload: { platform: 'discord', username: 'octo_dev' },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const data = mockPlatformLink.create.mock.calls[0][0].data;
+    expect(data.platform).toBe('discord');
+    expect(data.username).toBe('octo_dev');
+    // Discord has no urlPattern, so the stored URL is legitimately empty.
+    expect(data.url).toBe('');
+  });
+
+  it('still rejects a username-only link for a platform that does have a URL pattern', async () => {
+    mockPlatformLink.aggregate.mockResolvedValue({ _max: { displayOrder: null } });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/profiles/me/links',
+      // GitHub with an invalid handle -> rejected by the shared validationRegex.
+      payload: { platform: 'github', username: 'not a valid handle!' },
+    });
+
+    expect(res.statusCode).toBeGreaterThanOrEqual(400);
   });
 });

@@ -1,4 +1,4 @@
-import { detectPlatformFromUrl, getProfileUrl } from '@devcard/shared'
+import { detectPlatformFromUrl, getPlatform, getProfileUrl } from '@devcard/shared'
 
 import { getErrorMessage } from '../utils/error.util.js'
 
@@ -53,9 +53,17 @@ export async function createPlatformLink(app: FastifyInstance, userId: string, l
   const detected = linkData.url ? detectPlatformFromUrl(linkData.url) : null
   const platform = linkData.platform || detected?.platform.id || 'custom'
   const username = linkData.username || detected?.username || deriveUsernameFromUrl(linkData.url)
+  const platformDef = getPlatform(platform)
   const url = linkData.url || (platform && username ? getProfileUrl(platform, username) : '')
 
-  if (!platform || !username || !url) {
+  if (!platform || !username) {
+    throw Object.assign(new Error('Invalid platform link'), { code: 'LINK_DETECTION_FAILED' })
+  }
+
+  // Some platforms have no public profile URL by handle — Discord only exposes
+  // /users/<snowflake>, which we do not have until the account is verified. The
+  // handle itself is the identity, so an empty URL is valid there.
+  if (!url && platformDef?.urlPattern) {
     throw Object.assign(new Error('Invalid platform link'), { code: 'LINK_DETECTION_FAILED' })
   }
 

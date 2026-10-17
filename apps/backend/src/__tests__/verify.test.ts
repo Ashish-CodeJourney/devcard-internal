@@ -332,7 +332,12 @@ describe('GET /api/verify/:provider/callback', () => {
     expect(locationOf(res)).toContain('status=verified');
     expect(mockPrisma.platformLink.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ verified: true, platformUserId: '99887766' }),
+        data: expect.objectContaining({
+          verified: true,
+          platformUserId: '99887766',
+          // Discord is only addressable by snowflake, so verification fills the URL.
+          url: 'https://discord.com/users/99887766',
+        }),
       }),
     );
 

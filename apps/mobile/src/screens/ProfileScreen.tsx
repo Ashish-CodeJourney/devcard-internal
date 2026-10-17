@@ -6,7 +6,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { del, get, post, put } from '../services/api';
-import { PLATFORMS } from '@devcard/shared';
+import { PLATFORMS, getAllPlatforms } from '@devcard/shared';
 import {
   AppText,
   Avatar,
@@ -15,6 +15,7 @@ import {
   EmptyState,
   Icon,
   PlatformRow,
+  platformIcon,
   SectionHeader,
   Sheet,
   Surface,
@@ -48,8 +49,8 @@ export default function ProfileScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [showAdd, setShowAdd] = useState(false);
-  const [platformNameInput, setPlatformNameInput] = useState('');
-  const [profileLinkInput, setProfileLinkInput] = useState('');
+  const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
+  const [identifierInput, setIdentifierInput] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [addingLink, setAddingLink] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PlatformLink | null>(null);
@@ -75,11 +76,14 @@ export default function ProfileScreen() {
   );
 
   const openAdd = () => {
-    setPlatformNameInput('');
-    setProfileLinkInput('');
+    setSelectedPlatformId(null);
+    setIdentifierInput('');
     setAddError(null);
     setShowAdd(true);
   };
+
+  const selectedPlatform = getAllPlatforms().find(p => p.id === selectedPlatformId);
+  const usesFullUrl = selectedPlatform?.usesFullUrl ?? false;
 
   const normalizeProfileLink = (value: string) => {
     const trimmed = value.trim();
@@ -89,22 +93,38 @@ export default function ProfileScreen() {
   };
 
   const handleAddLink = async () => {
-    if (!platformNameInput.trim() || !profileLinkInput.trim()) {
-      setAddError('Enter both a platform name and a profile link.');
+    const platformDef = getAllPlatforms().find(p => p.id === selectedPlatformId);
+    if (!platformDef) {
+      setAddError('Choose a platform first.');
       return;
     }
+
+    const value = identifierInput.trim();
+    if (!value) {
+      setAddError(platformDef.usesFullUrl ? 'Enter the profile URL.' : 'Enter your username.');
+      return;
+    }
+
+    // Username platforms (Discord, GitHub, …) take a handle, not a URL.
+    if (!platformDef.usesFullUrl && platformDef.validationRegex && !platformDef.validationRegex.test(value)) {
+      setAddError(`That does not look like a valid ${platformDef.name} username.`);
+      return;
+    }
+
     setAddingLink(true);
     setAddError(null);
     try {
       await post(
         '/api/profiles/me/links',
-        { platform: platformNameInput.trim(), url: normalizeProfileLink(profileLinkInput) },
+        platformDef.usesFullUrl
+          ? { platform: platformDef.id, url: normalizeProfileLink(value) }
+          : { platform: platformDef.id, username: value.replace(/^@+/, '') },
         token,
       );
       setShowAdd(false);
       await loadLinks();
     } catch {
-      setAddError('Could not add that link. Check the URL and try again.');
+      setAddError(`Could not add that ${platformDef.name} link. Check the value and try again.`);
     } finally {
       setAddingLink(false);
     }
@@ -384,40 +404,77 @@ export default function ProfileScreen() {
         onClose={() => setShowAdd(false)}
         eyebrow="New"
         title="Add platform link"
+        scrollable
         footer={<Button label="Add link" onPress={handleAddLink} loading={addingLink} />}>
-        <TextField
-          label="Platform"
-          placeholder="GitHub"
-          value={platformNameInput}
-          onChangeText={v => {
-            setPlatformNameInput(v);
-            setAddError(null);
-          }}
-          autoCapitalize="words"
-          error={addError && !platformNameInput.trim() ? addError : null}
-        />
-        <TextField
-          label="Profile link"
-          placeholder="https://github.com/yourname"
-          value={profileLinkInput}
-          onChangeText={v => {
-            setProfileLinkInput(v);
-            setAddError(null);
-          }}
-          autoCapitalize="none"
-          autoCorrect={false}
-          monospace
-          error={addError && platformNameInput.trim() ? addError : null}
-          hint="Paste your full profile URL."
-        />
-        <Pressable onPress={() => navigation.navigate('Links')} accessibilityRole="button">
-          <View style={styles.browseRow}>
-            <AppText variant="label" tone="accent">
-              Browse known platforms instead
-            </AppText>
-            <Icon name="arrow-right" size={15} color={colors.accent} style={styles.browseIcon} />
-          </View>
-        </Pressable>
+        <AppText variant="eyebrow" tone="muted" style={styles.fieldLabel}>
+          PLATFORM
+        </AppText>
+        <View style={styles.platformGrid}>
+          {getAllPlatforms()
+            .filter(p => p.id !== 'custom')
+            .map(p => {
+              const active = p.id === selectedPlatformId;
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => {
+                    setSelectedPlatformId(p.id);
+                    setIdentifierInput('');
+                    setAddError(null);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={p.name}
+                  style={[
+                    styles.platformChip,
+                    {
+                      borderColor: active ? colors.accentBorder : colors.border,
+                      backgroundColor: active ? colors.accentSoft : colors.bgCard,
+                    },
+                  ]}>
+                  <Icon
+                    name={platformIcon(p.id)}
+                    size={15}
+                    color={active ? colors.accent : colors.textSecondary}
+                  />
+                  <AppText variant="label" tone={active ? 'accent' : 'secondary'} numberOfLines={1} style={styles.platformChipText}>
+                    {p.name}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+        </View>
+
+        {selectedPlatformId ? (
+          <TextField
+            label={usesFullUrl ? 'Profile URL' : 'Username'}
+            placeholder={selectedPlatform?.usernamePlaceholder ?? ''}
+            value={identifierInput}
+            onChangeText={v => {
+              setIdentifierInput(v);
+              setAddError(null);
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            monospace
+            error={addError}
+            hint={
+              usesFullUrl
+                ? 'Paste your full profile URL.'
+                : 'Just your handle — no URL needed.'
+            }
+          />
+        ) : (
+          <AppText variant="caption" tone="muted" style={styles.platformHint}>
+            Pick a platform to continue.
+          </AppText>
+        )}
+
+        {addError && !selectedPlatformId ? (
+          <AppText variant="caption" tone="error" style={styles.platformHint}>
+            {addError}
+          </AppText>
+        ) : null}
       </Sheet>
 
       <ConfirmDialog
@@ -470,6 +527,17 @@ const styles = StyleSheet.create({
   linkRowPad: { paddingHorizontal: SPACING.xs },
   rowDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: SPACING.sm },
   addBtn: { marginTop: SPACING.md },
-  browseRow: { flexDirection: 'row', alignItems: 'center' },
-  browseIcon: { marginLeft: SPACING.xs },
+  platformGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: SPACING.md },
+  platformChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.full,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    marginRight: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  platformChipText: { marginLeft: SPACING.xs },
+  platformHint: { marginTop: SPACING.xs },
 });

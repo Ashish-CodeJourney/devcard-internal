@@ -193,6 +193,11 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
             verificationMethod: 'OAUTH',
             platformUserId: identity.providerUserId,
             checkedAt: null,
+            // Discord profiles are only addressable by snowflake, which we now
+            // have — so the link becomes clickable after verification.
+            ...(payload.platform === 'discord'
+              ? { url: `https://discord.com/users/${identity.providerUserId}` }
+              : {}),
           },
         });
 
