@@ -204,13 +204,15 @@ export const PLATFORMS: Record<string, PlatformDef> = {
     name: 'Discord',
     icon: 'discord',
     color: '#5865F2',
-    urlPattern: '', // no profile URL — copy to clipboard
+    urlPattern: '', // no public profile URL by username — copy to clipboard
     deepLinkPattern: null,
     webViewUrlPattern: null,
     followStrategy: 'copy',
-    oauthScopes: [],
-    usernamePlaceholder: 'e.g. user#1234',
+    oauthScopes: ['identify'],
+    // Discord migrated to unique usernames in 2023; the old user#1234 form is gone.
+    usernamePlaceholder: 'e.g. yourname',
     usesFullUrl: false,
+    validationRegex: /^[a-zA-Z0-9._]{2,32}$/,
   },
   telegram: {
     id: 'telegram',

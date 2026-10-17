@@ -308,6 +308,38 @@ describe('GET /api/verify/:provider/callback', () => {
     );
   });
 
+  it('verifies a Discord link saved in the legacy name#1234 format', async () => {
+    process.env.DISCORD_CLIENT_ID = 'discord-client';
+    process.env.DISCORD_CLIENT_SECRET = 'discord-secret';
+
+    // Stored before Discord dropped discriminators.
+    mockPrisma.platformLink.findFirst.mockResolvedValue(
+      link({ platform: 'discord', username: 'octo-dev#1234' }),
+    );
+    mockPrisma.platformLink.update.mockResolvedValue({});
+    vi.stubGlobal(
+      'fetch',
+      vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'tok' }) } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ id: '99887766', username: 'octo-dev' }) } as any),
+    );
+
+    const state = signVerifyState({ userId: 'user-123', linkId: 'link-1', platform: 'discord' });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: `/api/verify/discord/callback?code=x&state=${state}` });
+
+    expect(res.statusCode).toBe(302);
+    expect(locationOf(res)).toContain('status=verified');
+    expect(mockPrisma.platformLink.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ verified: true, platformUserId: '99887766' }),
+      }),
+    );
+
+    delete process.env.DISCORD_CLIENT_ID;
+    delete process.env.DISCORD_CLIENT_SECRET;
+  });
+
   it('does not leave a non-ASCII character in the redirect header', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('boom')));
     const state = signVerifyState({ userId: 'user-123', linkId: 'link-1', platform: 'gitlab' });

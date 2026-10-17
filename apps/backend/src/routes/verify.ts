@@ -8,7 +8,14 @@ type ProviderParams = { provider: string };
 
 /** Handles are case-insensitive and are routinely written with a leading @. */
 function normaliseHandle(value: string | null | undefined): string {
-  return (value ?? '').trim().replace(/^@+/, '').replace(/\/+$/, '').toLowerCase();
+  return (value ?? '')
+    .trim()
+    .replace(/^@+/, '')
+    .replace(/\/+$/, '')
+    // Discord dropped the name#1234 form in 2023; ignore a legacy discriminator
+    // so links created before the migration can still be verified.
+    .replace(/#\d{1,4}$/, '')
+    .toLowerCase();
 }
 
 function asciiSafe(message: string): string {
