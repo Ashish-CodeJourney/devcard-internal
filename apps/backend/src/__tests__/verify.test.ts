@@ -267,7 +267,7 @@ describe('GET /api/verify/:provider/callback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'tok' }) } as any)
+        .mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify({ access_token: 'tok' }), json: async () => ({ access_token: 'tok' }) } as any)
         .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 7, username: 'octo-dev' }) } as any),
     );
 
@@ -286,7 +286,7 @@ describe('GET /api/verify/:provider/callback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'tok' }) } as any)
+        .mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify({ access_token: 'tok' }), json: async () => ({ access_token: 'tok' }) } as any)
         .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 7, username: 'octo-dev' }) } as any),
     );
 
@@ -320,7 +320,7 @@ describe('GET /api/verify/:provider/callback', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'tok' }) } as any)
+        .mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify({ access_token: 'tok' }), json: async () => ({ access_token: 'tok' }) } as any)
         .mockResolvedValueOnce({ ok: true, json: async () => ({ id: '99887766', username: 'octo-dev' }) } as any),
     );
 
