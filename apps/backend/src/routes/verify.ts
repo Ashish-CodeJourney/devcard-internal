@@ -62,10 +62,10 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
     const provider = getOAuthProvider(link.platform);
     if (!provider) return reply.status(400).send({ error: 'Unsupported provider' });
 
-    const clientId = process.env[provider.clientIdEnv];
+    const clientId = process.env[provider.clientIdEnv]?.trim();
     if (!clientId) return reply.status(400).send({ error: 'Provider is not configured' });
 
-    const redirectUri = `${process.env.BACKEND_URL}/api/verify/${provider.id}/callback`;
+    const redirectUri = `${process.env.BACKEND_URL?.trim()}/api/verify/${provider.id}/callback`;
     const state = signVerifyState({ userId, linkId: link.id, platform: link.platform });
 
     const params = new URLSearchParams({
@@ -157,11 +157,13 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
       const { code } = request.query;
       if (!code) return done({ error: 'The provider did not return an authorisation code.' });
 
-      const clientId = process.env[provider.clientIdEnv];
-      const clientSecret = process.env[provider.clientSecretEnv];
+      // Trim: secrets pasted into a dashboard often carry a trailing newline,
+      // which makes the provider reject the exchange as invalid_client.
+      const clientId = process.env[provider.clientIdEnv]?.trim();
+      const clientSecret = process.env[provider.clientSecretEnv]?.trim();
       if (!clientId || !clientSecret) return done({ error: 'Provider is not configured' });
 
-      const redirectUri = `${process.env.BACKEND_URL}/api/verify/${provider.id}/callback`;
+      const redirectUri = `${process.env.BACKEND_URL?.trim()}/api/verify/${provider.id}/callback`;
 
       const link = await app.prisma.platformLink.findFirst({
         where: { id: payload.linkId, userId: payload.userId },
@@ -203,8 +205,19 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
 
         return done({ verification: payload.platform, linkId: link.id, status: 'verified' });
       } catch (error) {
-        request.log.error({ error, provider: providerId }, 'verification oauth failed');
-        return done({ error: `We could not complete the ${provider.name} verification.` });
+        // `err` (not `error`) so pino serialises the Error instead of logging {}.
+        request.log.error({ err: error, provider: providerId }, 'verification oauth failed');
+
+        // Surface the provider's own reason — "invalid_client" vs "invalid_grant"
+        // is the difference between a bad secret and a bad code. Stripped to
+        // ASCII so it is safe in the redirect header.
+        const detail = (error instanceof Error ? error.message : String(error))
+          .replace(/[^\x20-\x7E]/g, '')
+          .slice(0, 160);
+
+        return done({
+          error: `We could not complete the ${provider.name} verification (${detail}).`,
+        });
       }
     },
   );

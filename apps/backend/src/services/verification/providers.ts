@@ -50,6 +50,16 @@ async function postForm(url: string, body: Record<string, string>): Promise<Reco
   return (await res.json().catch(() => ({}))) as Record<string, unknown>;
 }
 
+/**
+ * Surface the provider's own error code. Without this the callback failure logs
+ * an opaque message and there is no way to tell a bad secret from a bad code.
+ */
+function providerError(provider: string, step: string, data: Record<string, unknown>): Error {
+  const code = typeof data.error === 'string' ? data.error : 'unknown_error';
+  const description = typeof data.error_description === 'string' ? ` - ${data.error_description}` : '';
+  return new Error(`${provider} ${step} failed (${code}${description})`);
+}
+
 export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
   gitlab: {
     id: 'gitlab',
@@ -67,14 +77,14 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
         grant_type: 'authorization_code',
         redirect_uri: redirectUri,
       });
-      if (typeof data.access_token !== 'string') throw new Error('gitlab_token_exchange_failed');
+      if (typeof data.access_token !== 'string') throw providerError('gitlab', 'token exchange', data);
       return { accessToken: data.access_token };
     },
     fetchIdentity: async accessToken => {
       const res = await fetch('https://gitlab.com/api/v4/user', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) throw new Error('gitlab_user_fetch_failed');
+      if (!res.ok) throw providerError('gitlab', 'user fetch', { error: `HTTP ${res.status}` });
       const u = (await res.json()) as { id?: number; username?: string; email?: string | null };
       if (u.id === undefined) throw new Error('gitlab_user_malformed');
       return { handle: u.username ?? null, providerUserId: String(u.id), email: u.email ?? null };
@@ -98,14 +108,14 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
         grant_type: 'authorization_code',
         redirect_uri: redirectUri,
       });
-      if (typeof data.access_token !== 'string') throw new Error('discord_token_exchange_failed');
+      if (typeof data.access_token !== 'string') throw providerError('discord', 'token exchange', data);
       return { accessToken: data.access_token };
     },
     fetchIdentity: async accessToken => {
       const res = await fetch('https://discord.com/api/users/@me', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) throw new Error('discord_user_fetch_failed');
+      if (!res.ok) throw providerError('discord', 'user fetch', { error: `HTTP ${res.status}` });
       const u = (await res.json()) as { id?: string; username?: string; email?: string | null };
       if (!u.id) throw new Error('discord_user_malformed');
       return { handle: u.username ?? null, providerUserId: u.id, email: u.email ?? null };
@@ -131,14 +141,14 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
         client_id: clientId,
         client_secret: clientSecret,
       });
-      if (typeof data.access_token !== 'string') throw new Error('linkedin_token_exchange_failed');
+      if (typeof data.access_token !== 'string') throw providerError('linkedin', 'token exchange', data);
       return { accessToken: data.access_token };
     },
     fetchIdentity: async accessToken => {
       const res = await fetch('https://api.linkedin.com/v2/userinfo', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) throw new Error('linkedin_user_fetch_failed');
+      if (!res.ok) throw providerError('linkedin', 'user fetch', { error: `HTTP ${res.status}` });
       const u = (await res.json()) as { sub?: string; email?: string | null; name?: string | null };
       if (!u.sub) throw new Error('linkedin_user_malformed');
       return { handle: null, providerUserId: u.sub, email: u.email ?? null };
