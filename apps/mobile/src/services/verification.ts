@@ -98,6 +98,21 @@ export async function startVerification(linkId: string, token: string | null): P
     token,
   );
 
+  console.log(
+    '[verify] start kind=',
+    res?.kind,
+    'pkce=',
+    Boolean(res?.pkce),
+    'redirect=',
+    (() => {
+      try {
+        return res?.url ? new URL(res.url).searchParams.get('redirect_uri') : null;
+      } catch {
+        return 'unparseable';
+      }
+    })(),
+  );
+
   if (
     res?.pkce &&
     res.state &&
@@ -175,6 +190,8 @@ export async function completeVerification(
     ]),
   });
 
+  console.log('[verify] token exchange status=', tokenRes.status);
+
   const tokenJson = (await tokenRes.json().catch(() => null)) as
     | { access_token?: string; error?: string; error_description?: string }
     | null;
@@ -201,6 +218,8 @@ export async function completeVerification(
     { state, providerUserId: String(me.id), handle },
     token,
   );
+
+  console.log('[verify] complete posted ok');
 
   // The server returns 409 here when the provider account does not match the
   // handle on the link, which surfaces to the caller as a thrown error.

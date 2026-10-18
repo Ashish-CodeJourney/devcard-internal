@@ -41,6 +41,14 @@ function AppContent() {
     const handleDeepLink = async (event: { url: string }) => {
       try {
         const url = new URL(event.url);
+        console.log(
+          '[deeplink] host=',
+          url.host,
+          'path=',
+          url.pathname,
+          'keys=',
+          [...url.searchParams.keys()].join(','),
+        );
 
         // Platform verification that we completed on-device (PKCE) returns here.
         // The other providers still come back via the server's own callback.
