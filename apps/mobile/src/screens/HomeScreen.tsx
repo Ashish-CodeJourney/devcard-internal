@@ -13,7 +13,6 @@ import {
   Button,
   EmptyState,
   Icon,
-  IconName,
   Pill,
   SectionHeader,
   Sheet,
@@ -185,17 +184,6 @@ export default function HomeScreen() {
           </Surface>
         )}
 
-        {/* ── Quick actions ── */}
-        <SectionHeader title="Manage" style={styles.sectionSpacing} />
-        <View style={styles.quickGrid}>
-          <QuickAction icon="account-circle-outline" label="Profile" onPress={() => navigation.navigate('Profile')} />
-          <QuickAction icon="link-variant" label="Links" badge={links.length} onPress={() => navigation.navigate('Links')} />
-          <QuickAction icon="card-account-details-outline" label="Cards" badge={cards.length} onPress={() => navigation.navigate('Cards')} />
-          <QuickAction icon="qrcode-scan" label="Scan" onPress={() => navigation.navigate('Scan')} />
-          <QuickAction icon="chart-line" label="Views" onPress={() => navigation.navigate('Views')} />
-          <QuickAction icon="nfc-variant" label="NFC" onPress={() => navigation.navigate('Nfc')} />
-        </View>
-
         {/* ── Platform coverage ── */}
         <SectionHeader
           title={`Platforms · ${links.length}`}
@@ -284,42 +272,6 @@ export default function HomeScreen() {
   );
 }
 
-function QuickAction({
-  icon,
-  label,
-  badge,
-  onPress,
-}: {
-  icon: IconName;
-  label: string;
-  badge?: number;
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [
-        styles.quickAction,
-        { backgroundColor: colors.bgCard, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
-      ]}>
-      <View style={[styles.quickIcon, { backgroundColor: colors.bgElevated }]}>
-        <Icon name={icon} size={20} color={colors.accent} />
-      </View>
-      <AppText variant="label" numberOfLines={1}>
-        {label}
-      </AppText>
-      {typeof badge === 'number' && badge > 0 ? (
-        <AppText variant="caption" tone="muted">
-          {badge}
-        </AppText>
-      ) : null}
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { paddingBottom: SPACING.xxxl },
@@ -366,29 +318,6 @@ const styles = StyleSheet.create({
   heroActions: { flexDirection: 'row', marginTop: SPACING.md, paddingHorizontal: SPACING.lg },
   heroBtn: { flex: 1, marginHorizontal: SPACING.xs },
   sectionSpacing: { marginTop: SPACING.xl, paddingHorizontal: SPACING.lg },
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: SPACING.lg - SPACING.xs,
-  },
-  quickAction: {
-    width: '31%',
-    marginHorizontal: '1.16%',
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderRadius: BORDER_RADIUS.lg,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-    alignItems: 'center',
-  },
-  quickIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.sm,
-  },
   addLinks: { flexDirection: 'row', alignItems: 'center', marginHorizontal: SPACING.lg },
   addLinksText: { marginLeft: SPACING.sm },
   pillWrap: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.lg },
