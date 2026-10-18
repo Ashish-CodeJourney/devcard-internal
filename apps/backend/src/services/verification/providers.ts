@@ -26,6 +26,15 @@ export type OAuthProviderDef = {
   tokenUrl: string;
   /** Extra params appended to the authorise URL. */
   authorizeParams?: Record<string, string>;
+  /**
+   * Supports PKCE, so the client can perform the token exchange itself with no
+   * client secret. Needed when the server's egress IP is blocked by the provider
+   * (Discord rate-limits whole datacenter ranges) — the request then leaves from
+   * the device's own IP instead.
+   */
+  pkce?: boolean;
+  /** Identity endpoint, used by a client-side exchange. */
+  identityUrl?: string;
   /** Exchanges an auth code for an access token. */
   exchangeCode: (args: {
     code: string;
@@ -131,6 +140,8 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderDef> = {
     clientSecretEnv: 'DISCORD_CLIENT_SECRET',
     authorizeBase: 'https://discord.com/oauth2/authorize',
     tokenUrl: 'https://discord.com/api/oauth2/token',
+    identityUrl: 'https://discord.com/api/users/@me',
+    pkce: true,
     authorizeParams: { response_type: 'code', prompt: 'consent' },
     exchangeCode: async ({ code, redirectUri, clientId, clientSecret }) => {
       const res = await postForm('https://discord.com/api/oauth2/token', {

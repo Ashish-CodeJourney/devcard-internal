@@ -22,6 +22,11 @@ export interface VerificationCapability {
   reason?: string;
   /** Implemented, but the provider credentials are not configured yet. */
   needsSetup?: boolean;
+  /**
+   * The client can run the token exchange itself (PKCE, no client secret), which
+   * is how verification keeps working when our egress IP is blocked.
+   */
+  pkce?: boolean;
 }
 
 /** Platforms already verified as a side effect of signing in. */
@@ -70,11 +75,16 @@ export function getExistenceChecker(platformId: string): ((u: string) => Promise
 export function getCapability(platformId: string, displayName: string): VerificationCapability {
   const provider = OAUTH_PROVIDERS[platformId];
   if (provider) {
-    const configured = envHas(provider.clientIdEnv, provider.clientSecretEnv);
+    // A PKCE provider only needs the client id: with a public client there is no
+    // secret to exchange, because the token request never reaches this server.
+    const configured = provider.pkce
+      ? Boolean(process.env[provider.clientIdEnv])
+      : envHas(provider.clientIdEnv, provider.clientSecretEnv);
     return {
       platform: platformId,
       kind: configured ? 'oauth' : 'unavailable',
       label: LABELS.oauth.replace('{name}', displayName),
+      ...(provider.pkce ? { pkce: true } : {}),
       ...(configured ? {} : { needsSetup: true, reason: `Waiting for ${provider.name} app credentials` }),
     };
   }

@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { PLATFORMS, getAllPlatforms } from '@devcard/shared';
 import { get, post, put, del } from '../services/api';
+import { startVerification } from '../services/verification';
 import {
   AppText,
   Button,
@@ -94,7 +95,9 @@ export default function LinksScreen() {
     const name = PLATFORMS[link.platform]?.name ?? link.platform;
     setVerifying(link.id);
     try {
-      const res = await post<any>(`/api/verify/links/${link.id}/start`, undefined, token);
+      // Providers we can exchange for on-device (PKCE) are handled transparently
+      // here; the rest still round-trip through the server.
+      const res = await startVerification(link.id, token);
 
       if (res?.kind === 'oauth' && res.url) {
         // Result comes back through the devcard:// deep link.

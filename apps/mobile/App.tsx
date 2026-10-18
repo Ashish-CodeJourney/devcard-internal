@@ -10,6 +10,7 @@ import MainTabs from './src/navigation/MainTabs';
 import SplashScreen from './src/screens/SplashScreen';
 import { DEEP_LINK_SCHEME } from './src/config';
 import { post } from './src/services/api';
+import { completeVerification } from './src/services/verification';
 
 import { Linking, StyleSheet, Alert } from 'react-native';
 
@@ -34,12 +35,40 @@ const linking: LinkingOptions<{}> = {
 // ── App Content ───────────────────────────────────────────────────────────────
 
 function AppContent() {
-  const { isAuthenticated, isLoading, login, refreshUser } = useAuth();
+  const { isAuthenticated, isLoading, login, refreshUser, token: authToken } = useAuth();
 
   React.useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
       try {
         const url = new URL(event.url);
+
+        // Platform verification that we completed on-device (PKCE) returns here.
+        // The other providers still come back via the server's own callback.
+        if (url.protocol === `${DEEP_LINK_SCHEME}:` && url.host === 'verify') {
+          const code = url.searchParams.get('code');
+          const state = url.searchParams.get('state');
+          const failure =
+            url.searchParams.get('error_description') || url.searchParams.get('error');
+
+          if (failure) {
+            Alert.alert('Verification failed', decodeURIComponent(failure));
+            return;
+          }
+          if (!code || !state) {
+            Alert.alert('Verification failed', 'The provider did not return a result.');
+            return;
+          }
+
+          try {
+            const handle = await completeVerification(code, state, authToken);
+            await refreshUser();
+            Alert.alert('Verified', `Your ${handle ? `@${handle}` : 'account'} is now verified.`);
+          } catch (err: any) {
+            Alert.alert('Verification failed', err?.message ?? 'Please try again.');
+          }
+          return;
+        }
+
         const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
         const token = url.searchParams.get('token') || hashParams.get('token');
         const code = url.searchParams.get('code') || hashParams.get('code');
@@ -89,7 +118,7 @@ function AppContent() {
     return () => {
       subscription.remove();
     };
-  }, [login, refreshUser]);
+  }, [login, refreshUser, authToken]);
 
   if (isLoading) {
     return <SplashScreen />;

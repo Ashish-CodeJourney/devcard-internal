@@ -93,6 +93,29 @@ describe('capability registry', () => {
     expect(cap.kind).toBe('unavailable');
     expect(cap.reason).toMatch(/paid API/i);
   });
+
+  it('offers on-device PKCE for Discord, which needs no client secret', () => {
+    const previousId = process.env.DISCORD_CLIENT_ID;
+    const previousSecret = process.env.DISCORD_CLIENT_SECRET;
+    process.env.DISCORD_CLIENT_ID = 'discord-client';
+    delete process.env.DISCORD_CLIENT_SECRET;
+
+    // A public client has no secret to exchange, so the id alone is enough.
+    const cap = getCapability('discord', 'Discord');
+    expect(cap.kind).toBe('oauth');
+    expect(cap.pkce).toBe(true);
+
+    if (previousId === undefined) {
+      delete process.env.DISCORD_CLIENT_ID;
+    } else {
+      process.env.DISCORD_CLIENT_ID = previousId;
+    }
+    if (previousSecret === undefined) {
+      delete process.env.DISCORD_CLIENT_SECRET;
+    } else {
+      process.env.DISCORD_CLIENT_SECRET = previousSecret;
+    }
+  });
 });
 
 // ─── GET /platforms ───────────────────────────────────────────────────────────
@@ -353,5 +376,189 @@ describe('GET /api/verify/:provider/callback', () => {
     const res = await app.inject({ method: 'GET', url: `/api/verify/gitlab/callback?code=x&state=${state}` });
     // Would throw ERR_INVALID_CHAR during inject if the header contained non-ASCII.
     expect(res.statusCode).toBe(302);
+  });
+});
+
+// ─── On-device PKCE ───────────────────────────────────────────────────────────
+// Discord rate-limits this server's egress IP, so the exchange happens on the
+// device. These cover the contract the app relies on.
+
+describe('POST /api/verify/links/:linkId/start (PKCE)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.DISCORD_CLIENT_ID = 'discord-client';
+    process.env.DISCORD_CLIENT_SECRET = 'discord-secret';
+  });
+
+  it('returns everything the device needs to finish the exchange itself', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(link({ platform: 'discord', username: 'octo-dev' }));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/verify/links/link-1/start',
+      payload: {
+        codeChallenge: 'a-challenge',
+        codeChallengeMethod: 'S256',
+        redirectUri: 'devcard://verify/callback',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body).toMatchObject({
+      kind: 'oauth',
+      pkce: true,
+      clientId: 'discord-client',
+      redirectUri: 'devcard://verify/callback',
+    });
+    expect(body.tokenUrl).toContain('/oauth2/token');
+    expect(body.identityUrl).toContain('/users/@me');
+    // No secret is ever handed to the client.
+    expect(JSON.stringify(body)).not.toContain('discord-secret');
+
+    const url = new URL(body.url);
+    expect(url.searchParams.get('code_challenge')).toBe('a-challenge');
+    expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+    // The provider must return to the app's scheme, not our own callback.
+    expect(url.searchParams.get('redirect_uri')).toBe('devcard://verify/callback');
+    expect(verifyVerifyState(body.state)).toMatchObject({ linkId: 'link-1', platform: 'discord' });
+  });
+
+  it('refuses a redirect URI that is not allowlisted', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(link({ platform: 'discord' }));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/verify/links/link-1/start',
+      payload: { codeChallenge: 'a-challenge', redirectUri: 'evil://steal-the-code' },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('keeps the server-side flow when the client sends no challenge', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(link({ platform: 'discord' }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/api/verify/links/link-1/start' });
+
+    const body = res.json();
+    expect(body.pkce).toBeUndefined();
+    expect(new URL(body.url).searchParams.get('redirect_uri')).toBe(
+      'https://backend.test/api/verify/discord/callback',
+    );
+  });
+});
+
+describe('POST /api/verify/links/:linkId/complete', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.DISCORD_CLIENT_ID = 'discord-client';
+  });
+
+  function completePayload(state: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return { state, providerUserId: '99887766', handle: 'octo-dev', ...overrides };
+  }
+
+  it('records a device-side result as OAUTH_DEVICE, not OAUTH', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(
+      link({ platform: 'discord', username: '@Octo-Dev' }),
+    );
+    mockPrisma.platformLink.update.mockResolvedValue({});
+    const state = signVerifyState({ userId: 'user-123', linkId: 'link-1', platform: 'discord' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/verify/links/link-1/complete',
+      payload: completePayload(state),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ verified: true, method: 'OAUTH_DEVICE' });
+    expect(mockPrisma.platformLink.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'link-1' },
+        data: expect.objectContaining({
+          verified: true,
+          verificationMethod: 'OAUTH_DEVICE',
+          platformUserId: '99887766',
+          url: 'https://discord.com/users/99887766',
+        }),
+      }),
+    );
+  });
+
+  it('rejects a handle that does not match the link', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(
+      link({ platform: 'discord', username: 'somebody-else' }),
+    );
+    const state = signVerifyState({ userId: 'user-123', linkId: 'link-1', platform: 'discord' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/verify/links/link-1/complete',
+      payload: completePayload(state),
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(mockPrisma.platformLink.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a state issued for a different link', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(link({ platform: 'discord' }));
+    const state = signVerifyState({ userId: 'user-123', linkId: 'some-other-link', platform: 'discord' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/verify/links/link-1/complete',
+      payload: completePayload(state),
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(mockPrisma.platformLink.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a state that belongs to another user', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(link({ platform: 'discord' }));
+    const state = signVerifyState({ userId: 'attacker', linkId: 'link-1', platform: 'discord' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/verify/links/link-1/complete',
+      payload: completePayload(state),
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('refuses a provider that is not exchanged on-device', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(link({ platform: 'gitlab' }));
+    const state = signVerifyState({ userId: 'user-123', linkId: 'link-1', platform: 'gitlab' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/verify/links/link-1/complete',
+      payload: completePayload(state),
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('404s when the link does not belong to the caller', async () => {
+    mockPrisma.platformLink.findFirst.mockResolvedValue(null);
+    const state = signVerifyState({ userId: 'user-123', linkId: 'link-1', platform: 'discord' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/verify/links/link-1/complete',
+      payload: completePayload(state),
+    });
+
+    expect(res.statusCode).toBe(404);
   });
 });

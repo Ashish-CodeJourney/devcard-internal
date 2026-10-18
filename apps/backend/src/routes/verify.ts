@@ -6,6 +6,30 @@ import { PLATFORMS } from '@devcard/shared';
 type LinkParams = { linkId: string };
 type ProviderParams = { provider: string };
 
+type StartBody = {
+  /** Base64url S256 challenge (or the verifier itself when method is `plain`). */
+  codeChallenge?: string;
+  codeChallengeMethod?: string;
+  /** Where the provider should return the user; must be allowlisted. */
+  redirectUri?: string;
+};
+
+type CompleteBody = {
+  /** The signed state we issued in /start — proves this flow was started here. */
+  state?: string;
+  providerUserId?: string;
+  handle?: string;
+};
+
+/**
+ * Deep-link redirects we will hand to a provider. Kept in env so a fork can
+ * point at its own scheme without a code change.
+ */
+function allowedVerifyRedirects(): string[] {
+  const raw = process.env.VERIFY_REDIRECT_URIS || 'devcard://verify/callback';
+  return raw.split(',').map(value => value.trim()).filter(Boolean);
+}
+
 /** Handles are case-insensitive and are routinely written with a leading @. */
 function normaliseHandle(value: string | null | undefined): string {
   return (value ?? '')
@@ -37,7 +61,7 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ─── Begin verification for a link ───
-  app.post<{ Params: LinkParams }>('/links/:linkId/start', {
+  app.post<{ Params: LinkParams; Body: StartBody }>('/links/:linkId/start', {
     preHandler: [app.authenticate],
   }, async (request, reply) => {
     const userId = request.user.id;
@@ -65,7 +89,24 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
     const clientId = process.env[provider.clientIdEnv]?.trim();
     if (!clientId) return reply.status(400).send({ error: 'Provider is not configured' });
 
-    const redirectUri = `${process.env.BACKEND_URL?.trim()}/api/verify/${provider.id}/callback`;
+    const { codeChallenge, codeChallengeMethod, redirectUri: requestedRedirect } = request.body ?? {};
+
+    // PKCE on-device: the provider's egress block only affects this server, so
+    // the client runs the token exchange from its own IP instead.
+    const usePkce = provider.pkce === true && typeof codeChallenge === 'string' && codeChallenge.length > 0;
+
+    let redirectUri = `${process.env.BACKEND_URL?.trim()}/api/verify/${provider.id}/callback`;
+    const pkceParams: Record<string, string> = {};
+
+    if (usePkce) {
+      if (!requestedRedirect || !allowedVerifyRedirects().includes(requestedRedirect)) {
+        return reply.status(400).send({ error: 'That redirect URI is not allowed for this server' });
+      }
+      redirectUri = requestedRedirect;
+      pkceParams.code_challenge = codeChallenge;
+      pkceParams.code_challenge_method = codeChallengeMethod === 'plain' ? 'plain' : 'S256';
+    }
+
     const state = signVerifyState({ userId, linkId: link.id, platform: link.platform });
 
     const params = new URLSearchParams({
@@ -73,10 +114,26 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
       redirect_uri: redirectUri,
       scope: provider.scopes.join(' '),
       state,
+      ...pkceParams,
       ...(provider.authorizeParams ?? {}),
     });
 
-    return reply.send({ kind: 'oauth', url: `${provider.authorizeBase}?${params}` });
+    return reply.send({
+      kind: 'oauth',
+      url: `${provider.authorizeBase}?${params}`,
+      // Everything the device needs to finish the exchange itself. None of this
+      // is secret: the client id is public and PKCE replaces the need for one.
+      ...(usePkce
+        ? {
+            pkce: true,
+            clientId,
+            tokenUrl: provider.tokenUrl,
+            identityUrl: provider.identityUrl,
+            redirectUri,
+            state,
+          }
+        : {}),
+    });
   });
 
   // ─── Existence check (weaker tier) ───
@@ -111,6 +168,70 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.send({ checked: true, checkedAt: updated.checkedAt });
+  });
+
+  // ─── Complete a client-side (PKCE) verification ───
+  // The token exchange ran on the device, because the provider rate-limits this
+  // server's egress IP. That means we can no longer confirm the handle against
+  // the provider ourselves, so the result is recorded as OAUTH_DEVICE: auditable
+  // and distinguishable from the server-verified OAUTH tier, rather than being
+  // silently presented as equivalent.
+  app.post<{ Params: LinkParams; Body: CompleteBody }>('/links/:linkId/complete', {
+    preHandler: [app.authenticate],
+  }, async (request, reply) => {
+    const userId = request.user.id;
+    const { state, providerUserId, handle } = request.body ?? {};
+
+    const link = await app.prisma.platformLink.findFirst({
+      where: { id: request.params.linkId, userId },
+    });
+    if (!link) {
+      return reply.status(404).send({ error: 'Link not found' });
+    }
+
+    const provider = getOAuthProvider(link.platform);
+    if (!provider?.pkce) {
+      return reply.status(400).send({ error: 'This platform cannot be verified on-device' });
+    }
+
+    // The signed state ties this completion back to the /start we issued, so a
+    // caller cannot verify a link they did not begin a flow for.
+    const payload = verifyVerifyState(state);
+    if (
+      !payload ||
+      payload.userId !== userId ||
+      payload.linkId !== link.id ||
+      payload.platform !== link.platform
+    ) {
+      return reply.status(400).send({ error: 'This verification expired. Please try again.' });
+    }
+
+    if (!providerUserId || !handle) {
+      return reply.status(400).send({ error: `The ${provider.name} account details were missing.` });
+    }
+
+    if (normaliseHandle(handle) !== normaliseHandle(link.username)) {
+      return reply.status(409).send({
+        error: `That ${provider.name} account is "${handle}", which does not match the handle on this link.`,
+      });
+    }
+
+    await app.prisma.platformLink.update({
+      where: { id: link.id },
+      data: {
+        verified: true,
+        verifiedAt: new Date(),
+        verificationMethod: 'OAUTH_DEVICE',
+        platformUserId: providerUserId,
+        checkedAt: null,
+        // Discord profiles are only addressable by snowflake, which we now have.
+        ...(link.platform === 'discord'
+          ? { url: `https://discord.com/users/${providerUserId}` }
+          : {}),
+      },
+    });
+
+    return reply.send({ verified: true, linkId: link.id, method: 'OAUTH_DEVICE' });
   });
 
   // ─── Clear verification ───

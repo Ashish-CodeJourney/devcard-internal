@@ -280,7 +280,10 @@ export async function apiRequest<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as any)?.message ?? `Request failed: ${res.status}`);
+    // The backend reports either { error } or { message }; surface whichever is
+    // present so the real reason reaches the user instead of just a status code.
+    const detail = (err as any)?.message ?? (err as any)?.error;
+    throw new Error(typeof detail === 'string' ? detail : `Request failed: ${res.status}`);
   }
 
   // Some endpoints may return empty responses
