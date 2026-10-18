@@ -46,6 +46,10 @@ export const CardVisual: React.FC<Props> = ({
 }) => {
   const { colors } = useTheme();
 
+  // Short tiles (the cards list) get a single-line title so nothing wraps
+  // into the tight vertical space; taller previews keep two lines.
+  const titleLines = height <= 160 ? 1 : 2;
+
   const iconRow = (count: number, size = 18) => (
     <View style={styles.icons}>
       {links.slice(0, count).map(l => (
@@ -88,7 +92,7 @@ export const CardVisual: React.FC<Props> = ({
             ) : null}
           </View>
 
-          <AppText variant="display" numberOfLines={2} style={styles.signalTitle}>
+          <AppText variant="display" numberOfLines={titleLines} style={styles.signalTitle}>
             {title}
           </AppText>
 
@@ -128,7 +132,7 @@ export const CardVisual: React.FC<Props> = ({
 
           <AppText
             variant="h2"
-            numberOfLines={2}
+            numberOfLines={titleLines}
             style={[styles.termTitle, { fontFamily: FONT_FAMILY.mono }]}>
             {title}
           </AppText>
@@ -182,7 +186,7 @@ export const CardVisual: React.FC<Props> = ({
           ORBIT
         </AppText>
         <View style={styles.orbitSpacer} />
-        <AppText variant="h1" numberOfLines={2} style={styles.orbitTitle}>
+        <AppText variant="h1" numberOfLines={titleLines} style={styles.orbitTitle}>
           {title}
         </AppText>
         <View style={styles.signalFooter}>
@@ -214,8 +218,8 @@ const styles = StyleSheet.create({
 
   // signal
   signalBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-  signalBody: { flex: 1, padding: SPACING.lg, justifyContent: 'space-between', paddingLeft: SPACING.lg + 4 },
-  signalTitle: { fontSize: 34, lineHeight: 38 },
+  signalBody: { flex: 1, paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg, justifyContent: 'space-between', paddingLeft: SPACING.lg + 4 },
+  signalTitle: { fontSize: 30, lineHeight: 34 },
   signalFooter: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   owner: { flex: 1, marginRight: SPACING.sm },
 

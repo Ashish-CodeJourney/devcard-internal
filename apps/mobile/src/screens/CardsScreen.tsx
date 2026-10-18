@@ -27,7 +27,6 @@ import {
   Skeleton,
   TextField,
   Surface,
-  Pill,
 } from '../components/ui';
 import { CardVisual, CARD_PRESETS, CardPreset } from '../components/CardVisual';
 import { SPACING, BORDER_RADIUS, LAYOUT } from '../theme/tokens';
@@ -271,7 +270,7 @@ export default function CardsScreen() {
         <View style={styles.list}>
           {[1, 2].map(i => (
             <View key={i} style={styles.skeletonCard}>
-              <Skeleton width="100%" height={200} borderRadius={BORDER_RADIUS.xl} />
+              <Skeleton width="100%" height={148} borderRadius={BORDER_RADIUS.xl} />
             </View>
           ))}
         </View>
@@ -314,6 +313,7 @@ export default function CardsScreen() {
                 isDefault={item.isDefault}
                 preset={cardPresets[item.id] ?? 'signal'}
                 owner={user?.username}
+                height={148}
               />
             </Pressable>
 
@@ -323,7 +323,9 @@ export default function CardsScreen() {
               </AppText>
               <View style={styles.actions}>
                 {item.isDefault ? (
-                  <Pill label="Active" tone="accent" icon="check" />
+                  <AppText variant="label" tone="muted">
+                    Default
+                  </AppText>
                 ) : (
                   <Pressable onPress={() => setDefault(item.id)} hitSlop={8}>
                     <AppText variant="label" tone="secondary">
@@ -398,7 +400,7 @@ export default function CardsScreen() {
       <Sheet
         visible={showDetail}
         onClose={closeDetail}
-        eyebrow={editPreset.toUpperCase()}
+        eyebrow={`${CARD_PRESETS.find(p => p.id === editPreset)?.name ?? editPreset} preset`}
         title={selectedCard?.title || 'Card'}
         scrollable
         footer={
