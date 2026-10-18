@@ -10,7 +10,7 @@ import MainTabs from './src/navigation/MainTabs';
 import SplashScreen from './src/screens/SplashScreen';
 import { DEEP_LINK_SCHEME } from './src/config';
 import { post } from './src/services/api';
-import { completeVerification } from './src/services/verification';
+import { completeVerification, notifyVerificationCompleted } from './src/services/verification';
 
 import { Linking, StyleSheet, Alert } from 'react-native';
 
@@ -78,6 +78,7 @@ function AppContent() {
         // Platform-link verification returns from the provider's browser.
         if (verification) {
           await refreshUser();
+          notifyVerificationCompleted();
           Alert.alert('Verified', `Your ${verification} account is now verified.`);
           return;
         }

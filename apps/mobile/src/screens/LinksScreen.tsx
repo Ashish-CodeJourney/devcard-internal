@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { PLATFORMS, getAllPlatforms } from '@devcard/shared';
 import { get, post, put, del } from '../services/api';
-import { startVerification } from '../services/verification';
+import { startVerification, onVerificationCompleted } from '../services/verification';
 import {
   AppText,
   Button,
@@ -87,6 +87,16 @@ export default function LinksScreen() {
     });
     return () => sub.remove();
   }, [fetchLinks]);
+
+  // A foreground refetch can race the verification commit (the exchange still
+  // runs after the app is foregrounded), so also refresh exactly when a
+  // verification reports success.
+  useEffect(() => {
+    return onVerificationCompleted(() => {
+      fetchLinks();
+      fetchCapabilities();
+    });
+  }, [fetchLinks, fetchCapabilities]);
 
   const statusOf = (link: PlatformLink): 'verified' | 'checked' | 'unverified' =>
     link.verificationStatus ?? (link.verified ? 'verified' : link.checkedAt ? 'checked' : 'unverified');

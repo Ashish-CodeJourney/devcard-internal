@@ -30,6 +30,42 @@ export type StartResponse = {
   state?: string;
 };
 
+type VerificationListener = () => void;
+
+const verificationListeners = new Set<VerificationListener>();
+
+/**
+ * Subscribe to successful verifications (either the on-device PKCE flow or
+ * the server-side OAuth flow). Screens holding their own copy of the links
+ * use this to refetch after the server has committed the change — the
+ * AppState foreground refetch otherwise races the exchange and reloads
+ * stale data.
+ */
+export function onVerificationCompleted(listener: VerificationListener): () => void {
+  verificationListeners.add(listener);
+  return () => {
+    verificationListeners.delete(listener);
+  };
+}
+
+function emitVerificationCompleted(): void {
+  verificationListeners.forEach(listener => {
+    try {
+      listener();
+    } catch {
+      // A failing listener must not break the verification flow.
+    }
+  });
+}
+
+/**
+ * Fires the completed event for flows that finish outside
+ * completeVerification (the server-side OAuth callback).
+ */
+export function notifyVerificationCompleted(): void {
+  emitVerificationCompleted();
+}
+
 type PendingPkce = {
   state: string;
   linkId: string;
@@ -165,6 +201,10 @@ export async function completeVerification(
     { state, providerUserId: String(me.id), handle },
     token,
   );
+
+  // The server returns 409 here when the provider account does not match the
+  // handle on the link, which surfaces to the caller as a thrown error.
+  emitVerificationCompleted();
 
   return handle;
 }
