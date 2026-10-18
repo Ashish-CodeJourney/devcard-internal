@@ -40,19 +40,13 @@ function AppContent() {
   React.useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
       try {
+        // NOTE: React Native's URL implementation does not parse the host of
+        // custom-scheme deep links (host comes back empty), so the verify
+        // return is matched on the raw URL prefix — never on url.host.
+        // Matching on host silently drops the Discord code into the sign-in
+        // exchange below, which rejects it and kills the verification.
         const url = new URL(event.url);
-        console.log(
-          '[deeplink] host=',
-          url.host,
-          'path=',
-          url.pathname,
-          'keys=',
-          [...url.searchParams.keys()].join(','),
-        );
-
-        // Platform verification that we completed on-device (PKCE) returns here.
-        // The other providers still come back via the server's own callback.
-        if (url.protocol === `${DEEP_LINK_SCHEME}:` && url.host === 'verify') {
+        if (event.url.startsWith(`${DEEP_LINK_SCHEME}://verify/`)) {
           const code = url.searchParams.get('code');
           const state = url.searchParams.get('state');
           const failure =
