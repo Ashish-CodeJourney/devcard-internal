@@ -11,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { ACCENT_OPTIONS, FONT_OPTIONS, resolveFontFamilies, SPACING, BORDER_RADIUS, ICON_SIZE } from '../theme/tokens';
+import { ACCENT_OPTIONS, BACKGROUND_OPTIONS, FONT_OPTIONS, resolveFontFamilies, SPACING, BORDER_RADIUS, ICON_SIZE } from '../theme/tokens';
 import {
   AppText,
   Button,
@@ -38,7 +38,7 @@ const DEFAULT_SETTINGS: LocalSettings = {
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
   const { logout } = useAuth();
-  const { colors, isDark, mode, toggleTheme, accentColor, setAccentColor, fontId, setFontId } = useTheme();
+  const { colors, isDark, mode, toggleTheme, accentColor, setAccentColor, backgroundColor, setBackgroundColor, fontId, setFontId } = useTheme();
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [showFonts, setShowFonts] = useState(false);
 
@@ -141,11 +141,12 @@ export default function SettingsScreen() {
             </AppText>
             <View style={styles.swatchRow}>
               {ACCENT_OPTIONS.filter(o => o.group === 'neutral').map(option => (
-                <AccentSwatch
+                <ColorSwatch
                   key={option.id}
                   hex={option.hex}
                   id={option.id}
                   name={option.name}
+                  label={`Use ${option.name} accent`}
                   active={accentColor.toLowerCase() === option.hex.toLowerCase()}
                   borderColor={colors.border}
                   activeBorder={colors.textPrimary}
@@ -159,15 +160,59 @@ export default function SettingsScreen() {
             </AppText>
             <View style={styles.swatchRow}>
               {ACCENT_OPTIONS.filter(o => o.group === 'colour').map(option => (
-                <AccentSwatch
+                <ColorSwatch
                   key={option.id}
                   hex={option.hex}
                   id={option.id}
                   name={option.name}
+                  label={`Use ${option.name} accent`}
                   active={accentColor.toLowerCase() === option.hex.toLowerCase()}
                   borderColor={colors.border}
                   activeBorder={colors.textPrimary}
                   onPress={() => setAccentColor(option.hex)}
+                />
+              ))}
+            </View>
+          </Surface>
+        </Section>
+
+        {/* ── Background colour ── */}
+        <Section title="Background">
+          <Surface variant="default" radius="lg" padding="md" style={styles.paletteCard}>
+            <AppText variant="eyebrow" tone="muted" style={styles.paletteLabel}>
+              DARK
+            </AppText>
+            <View style={styles.swatchRow}>
+              {BACKGROUND_OPTIONS.filter(o => o.group === 'dark').map(option => (
+                <ColorSwatch
+                  key={option.id}
+                  hex={option.hex}
+                  id={option.id}
+                  name={option.name}
+                  label={`Use ${option.name} background`}
+                  active={backgroundColor.toLowerCase() === option.hex.toLowerCase()}
+                  borderColor={colors.border}
+                  activeBorder={colors.textPrimary}
+                  onPress={() => setBackgroundColor(option.hex)}
+                />
+              ))}
+            </View>
+
+            <AppText variant="eyebrow" tone="muted" style={[styles.paletteLabel, styles.paletteLabelSpaced]}>
+              LIGHT
+            </AppText>
+            <View style={styles.swatchRow}>
+              {BACKGROUND_OPTIONS.filter(o => o.group === 'light').map(option => (
+                <ColorSwatch
+                  key={option.id}
+                  hex={option.hex}
+                  id={option.id}
+                  name={option.name}
+                  label={`Use ${option.name} background`}
+                  active={backgroundColor.toLowerCase() === option.hex.toLowerCase()}
+                  borderColor={colors.border}
+                  activeBorder={colors.textPrimary}
+                  onPress={() => setBackgroundColor(option.hex)}
                 />
               ))}
             </View>
@@ -247,9 +292,9 @@ export default function SettingsScreen() {
   );
 }
 
-function AccentSwatch({
+function ColorSwatch({
   hex,
-  name,
+  label,
   active,
   borderColor,
   activeBorder,
@@ -258,6 +303,7 @@ function AccentSwatch({
   hex: string;
   id: string;
   name: string;
+  label: string;
   active: boolean;
   borderColor: string;
   activeBorder: string;
@@ -265,7 +311,7 @@ function AccentSwatch({
 }) {
   return (
     <Pressable
-      accessibilityLabel={`Use ${name} accent`}
+      accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       onPress={onPress}

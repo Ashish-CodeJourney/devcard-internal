@@ -217,6 +217,78 @@ export function deriveAccent(hex: string, isDark: boolean): {
   };
 }
 
+// ─── Background system ────────────────────────────────────────────────────────
+// The canvas is user-selectable. Choosing a background derives the whole neutral
+// ramp — page, cards, elevated and inset surfaces, the text ramp and the border
+// ramp — so any canvas stays legible. The light/dark mode follows the chosen
+// background's luminance, so a light canvas automatically yields dark text.
+
+export type BackgroundOption = {
+  id: string;
+  name: string;
+  hex: string;
+  group: 'dark' | 'light';
+};
+
+// The first dark option doubles as the built-in default canvas.
+export const BACKGROUND_OPTIONS: BackgroundOption[] = [
+  { id: 'obsidian', name: 'Obsidian', hex: '#0B0D0F', group: 'dark' },
+  { id: 'black', name: 'Pure Black', hex: '#000000', group: 'dark' },
+  { id: 'charcoal', name: 'Charcoal', hex: '#16191D', group: 'dark' },
+  { id: 'graphite', name: 'Graphite', hex: '#22272D', group: 'dark' },
+  { id: 'midnight', name: 'Midnight', hex: '#0A1220', group: 'dark' },
+  { id: 'navy', name: 'Navy', hex: '#0C1826', group: 'dark' },
+  { id: 'plum', name: 'Plum', hex: '#160B1D', group: 'dark' },
+  { id: 'vine', name: 'Vine', hex: '#0A150F', group: 'dark' },
+  { id: 'wine', name: 'Wine', hex: '#1A0D12', group: 'dark' },
+  { id: 'espresso', name: 'Espresso', hex: '#170F0A', group: 'dark' },
+  { id: 'canvas', name: 'Canvas', hex: '#F6F7F4', group: 'light' },
+  { id: 'paper', name: 'Paper', hex: '#FFFFFF', group: 'light' },
+  { id: 'fog', name: 'Fog', hex: '#E7EAE5', group: 'light' },
+  { id: 'sand', name: 'Sand', hex: '#F5EFE3', group: 'light' },
+  { id: 'mist', name: 'Mist', hex: '#EAF0F6', group: 'light' },
+  { id: 'blush', name: 'Blush', hex: '#F8ECEF', group: 'light' },
+];
+
+export const DEFAULT_BACKGROUND = COLORS.bgPrimary;
+
+/** True when a colour is perceptually dark (mirrors onColorFor's threshold). */
+export function isDarkColor(hex: string): boolean {
+  const [r, g, b] = parseHex(hex).map(v => v / 255);
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) <= 0.45;
+}
+
+/**
+ * Derive the neutral ramp for a canvas colour. Returns {} for the built-in
+ * palette so the default look is unchanged.
+ */
+export function deriveSurfaces(baseHex: string, isDark: boolean): Partial<typeof COLORS> {
+  const builtin = isDark ? COLORS : LIGHT_COLORS;
+  if (baseHex.toLowerCase() === builtin.bgPrimary.toLowerCase()) return {};
+
+  const up = (t: number) => mix(baseHex, '#FFFFFF', t);
+  const down = (t: number) => mix(baseHex, '#000000', t);
+  const card = isDark ? up(0.04) : '#FFFFFF';
+
+  return {
+    bgPrimary: baseHex,
+    bgSecondary: card,
+    bgCard: card,
+    bgCardGlass: withAlpha(card, isDark ? 0.88 : 0.9),
+    bgElevated: isDark ? up(0.08) : down(0.05),
+    bgInset: isDark ? down(0.5) : down(0.06),
+
+    textPrimary: isDark ? mix(baseHex, '#FFFFFF', 0.94) : mix(baseHex, '#000000', 0.92),
+    textSecondary: isDark ? mix(baseHex, '#FFFFFF', 0.62) : mix(baseHex, '#000000', 0.6),
+    textMuted: isDark ? mix(baseHex, '#FFFFFF', 0.42) : mix(baseHex, '#000000', 0.45),
+
+    border: isDark ? up(0.12) : down(0.12),
+    borderLight: isDark ? up(0.2) : down(0.2),
+    borderStrong: isDark ? up(0.3) : down(0.3),
+  };
+}
+
 // ─── Font families ────────────────────────────────────────────────────────────
 // Uses families that ship with each platform (no remote/bundled font files).
 
