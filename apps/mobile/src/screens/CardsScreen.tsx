@@ -546,12 +546,14 @@ function LinkPicker({
                 backgroundColor: selected ? colors.accentSoft : colors.bgCard,
               },
             ]}>
-            <PlatformRow
-              platform={link.platform}
-              platformName={PLATFORMS[link.platform]?.name || link.platform}
-              username={link.username}
-              brandColor={PLATFORMS[link.platform]?.color}
-            />
+            <View style={styles.linkRowText}>
+              <PlatformRow
+                platform={link.platform}
+                platformName={PLATFORMS[link.platform]?.name || link.platform}
+                username={link.username}
+                brandColor={PLATFORMS[link.platform]?.color}
+              />
+            </View>
             <Icon
               name={selected ? 'check-circle' : 'circle-outline'}
               size={20}
@@ -607,6 +609,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     marginBottom: SPACING.sm,
   },
+  linkRowText: { flex: 1, flexShrink: 1, marginRight: SPACING.sm },
   emptyLinks: { flexDirection: 'row', alignItems: 'center', marginTop: SPACING.sm },
   emptyLinksText: { flex: 1, marginLeft: SPACING.sm },
 });
