@@ -410,10 +410,9 @@ export default function ProfileScreen() {
           PLATFORM
         </AppText>
         <View style={styles.platformGrid}>
-          {getAllPlatforms()
-            .filter(p => p.id !== 'custom')
-            .map(p => {
+          {getAllPlatforms().map(p => {
               const active = p.id === selectedPlatformId;
+              const label = p.id === 'custom' ? 'Other' : p.name;
               return (
                 <Pressable
                   key={p.id}
@@ -424,7 +423,7 @@ export default function ProfileScreen() {
                   }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  accessibilityLabel={p.name}
+                  accessibilityLabel={label}
                   style={[
                     styles.platformChip,
                     {
@@ -438,7 +437,7 @@ export default function ProfileScreen() {
                     color={active ? colors.accent : colors.textSecondary}
                   />
                   <AppText variant="label" tone={active ? 'accent' : 'secondary'} numberOfLines={1} style={styles.platformChipText}>
-                    {p.name}
+                    {label}
                   </AppText>
                 </Pressable>
               );
