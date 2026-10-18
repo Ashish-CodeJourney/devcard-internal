@@ -2,8 +2,17 @@
 // Built on React Native's Modal so they remain reliable regardless of the
 // reanimated/worklets version in play. Both are themed and accessible.
 
-import React from 'react';
-import { Modal, View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Modal,
+  View,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  Keyboard,
+  Platform,
+  type KeyboardEvent,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { SPACING, BORDER_RADIUS, LAYOUT } from '../../theme/tokens';
@@ -33,10 +42,48 @@ export const Sheet: React.FC<SheetProps> = ({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
+  // The sheet is pinned to the bottom of the screen, so without this the
+  // keyboard would cover the input the user is typing into.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!visible) {
+      setKeyboardHeight(0);
+      return;
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (event: KeyboardEvent) =>
+      setKeyboardHeight(event.endCoordinates.height),
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [visible]);
+
+  const keyboardVisible = keyboardHeight > 0;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={[styles.backdrop, { backgroundColor: colors.overlay }]} onPress={onClose} accessibilityLabel="Close" />
-      <View style={[styles.sheet, { backgroundColor: colors.bgSecondary, borderColor: colors.border, paddingBottom: insets.bottom + SPACING.lg }]}>
+      <View
+        style={[
+          styles.sheet,
+          {
+            backgroundColor: colors.bgSecondary,
+            borderColor: colors.border,
+            // Lift the whole sheet above the keyboard.
+            bottom: keyboardHeight,
+            maxHeight: keyboardVisible ? '62%' : '88%',
+            // The keyboard already covers the home indicator area.
+            paddingBottom: keyboardVisible ? SPACING.lg : insets.bottom + SPACING.lg,
+          },
+        ]}>
         <View style={[styles.grabber, { backgroundColor: colors.borderLight }]} />
         {title ? (
           <View style={styles.header}>
@@ -54,7 +101,11 @@ export const Sheet: React.FC<SheetProps> = ({
           </View>
         ) : null}
         {scrollable ? (
-          <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled">
             {children}
           </ScrollView>
         ) : (
