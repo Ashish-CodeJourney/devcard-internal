@@ -4,7 +4,10 @@ import Navbar from '../components/Navbar';
 import EventsMap from '../components/EventsMap';
 import { useAuth } from '../lib/auth';
 import { EVENT_KINDS, createEvent, type EventKind } from '../lib/events';
+import { geocodeAddress } from '../lib/geocode';
 import './EventsPages.css';
+
+type GeoStatus = 'idle' | 'searching' | 'pinned' | 'unmatched' | 'manual';
 
 export default function EventSubmitPage() {
   const { user, loading: authLoading } = useAuth();
@@ -22,10 +25,51 @@ export default function EventSubmitPage() {
   const [picked, setPicked] = useState<[number, number] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Auto-pin from the typed address. Manual map clicks win until the address changes.
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>('idle');
+  const [focus, setFocus] = useState<[number, number] | null>(null);
+  const [pinLabel, setPinLabel] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = 'Submit an event | DevCard';
   }, []);
+
+  // Debounced forward-geocode: typing a venue drops the pin for you.
+  // No match (or too short) leaves the pin alone — zoom in and click instead.
+  useEffect(() => {
+    const query = [location, city, country].filter(Boolean).join(', ');
+    if (query.trim().length < 4) {
+      setGeoStatus(s => (s === 'searching' ? 'idle' : s));
+      return;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setGeoStatus('searching');
+      const hit = await geocodeAddress(query, controller.signal);
+      if (cancelled) return;
+      if (hit) {
+        setPicked([hit.lat, hit.lng]);
+        setFocus([hit.lat, hit.lng]);
+        setPinLabel(hit.label);
+        setGeoStatus('pinned');
+      } else {
+        setGeoStatus('unmatched');
+      }
+    }, 800);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [location, city, country]);
+
+  const handlePick = (lat: number, lng: number) => {
+    setPicked([lat, lng]);
+    setFocus(null);
+    setPinLabel(null);
+    setGeoStatus('manual');
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,11 +219,19 @@ export default function EventSubmitPage() {
               Click the map to drop a pin. This is what places the event on the discovery map — optional, but
               events without one cannot be found geographically.
             </p>
-            <EventsMap height={300} zoom={2} pickable picked={picked} onPick={(lat, lng) => setPicked([lat, lng])} />
+            <EventsMap height={300} zoom={2} pickable picked={picked} onPick={handlePick} focus={focus} />
             <p className="field-hint">
-              {picked
+              {geoStatus === 'searching' && 'Looking up that address…'}
+              {geoStatus === 'pinned' && picked && (
+                <>📍 Pinned from the address{pinLabel ? ` — ${pinLabel.split(',').slice(0, 2).join(',')}` : ''}. Click the map to adjust.</>
+              )}
+              {geoStatus === 'unmatched' && 'No match for that address — zoom in and click the map to place the pin.'}
+              {geoStatus === 'manual' && picked && (
+                <>Pinned by hand at {picked[0].toFixed(4)}, {picked[1].toFixed(4)}. </>
+              )}
+              {geoStatus === 'idle' && (picked
                 ? `Pinned at ${picked[0].toFixed(4)}, ${picked[1].toFixed(4)} — `
-                : 'No pin placed — '}
+                : 'Type a venue above to drop a pin automatically, or click the map. ')}
               {picked && (
                 <button type="button" className="link-button" onClick={() => setPicked(null)}>clear</button>
               )}

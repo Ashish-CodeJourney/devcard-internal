@@ -20,6 +20,9 @@ interface Props {
   pickable?: boolean;
   picked?: [number, number] | null;
   onPick?: (lat: number, lng: number) => void;
+  /** When set to new coordinates, the map flies there (e.g. after geocoding). */
+  focus?: [number, number] | null;
+  focusZoom?: number;
 }
 
 const DEFAULT_CENTER: [number, number] = [20, 0];
@@ -36,6 +39,8 @@ export default function EventsMap({
   pickable = false,
   picked = null,
   onPick,
+  focus = null,
+  focusZoom = 13,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletAny | null>(null);
@@ -109,6 +114,18 @@ export default function EventsMap({
       if (marker.onClick) m.on('click', marker.onClick);
     });
   }, [markers]);
+
+  // ─── Fly to a focused location (e.g. an address the user just typed) ───
+  const prevFocusKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focus) return;
+    const key = `${focus[0]},${focus[1]}`;
+    if (prevFocusKeyRef.current === key) return;
+    prevFocusKeyRef.current = key;
+    if (typeof map.flyTo === 'function') map.flyTo(focus, focusZoom);
+    else map.setView(focus, focusZoom);
+  }, [focus, focusZoom]);
 
   // ─── Picked location ───
   useEffect(() => {
