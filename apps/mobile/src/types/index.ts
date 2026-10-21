@@ -54,6 +54,13 @@ export interface EventSummary {
 export interface EventDetail extends EventSummary {
   organizerId: string;
   createdAt: string;
+  prizePool: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  registrationDeadline: string | null;
+  teamSizeMin: number | null;
+  teamSizeMax: number | null;
+  mode: string | null;
 }
 
 export interface EventAttendee {

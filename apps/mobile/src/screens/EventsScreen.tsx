@@ -184,7 +184,7 @@ export default function EventsScreen({ navigation }: Props) {
               title="No mapped events yet"
               description={
                 events.length === 0
-                  ? 'Approved events with a location will appear here. Submit one from the DevCard website.'
+                  ? 'Events with a location will appear here. Submit one from the DevCard website — it goes live right away.'
                   : 'The events that matched have no map location. Switch to List to see them.'
               }
               actionLabel={events.length > 0 ? 'Show list' : undefined}
@@ -199,7 +199,7 @@ export default function EventsScreen({ navigation }: Props) {
           <EmptyState
             icon="calendar-blank-outline"
             title="No events found"
-            description="Nothing matches that search. Events are submitted on the DevCard website and appear once approved."
+            description="Nothing matches that search. Events are submitted on the DevCard website and go live right away."
           />
         ) : (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>

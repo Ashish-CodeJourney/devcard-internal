@@ -32,6 +32,8 @@ export default function EventSubmitPage() {
   const [teamMax, setTeamMax] = useState('');
   const [mode, setMode] = useState<EventMode | ''>('');
   const [submitting, setSubmitting] = useState(false);
+  // Competition details apply to hackathons and conferences.
+  const showCompetition = kind === 'HACKATHON' || kind === 'CONFERENCE';
   const [error, setError] = useState<string | null>(null);
   // Auto-pin from the typed address. Manual map clicks win until the address changes.
   const [geoStatus, setGeoStatus] = useState<GeoStatus>('idle');
@@ -112,7 +114,7 @@ export default function EventSubmitPage() {
         url: url.trim() || undefined,
         latitude: picked?.[0],
         longitude: picked?.[1],
-        ...(kind === 'HACKATHON'
+        ...(showCompetition
           ? {
               prizePool: prizePool.trim() || undefined,
               contactEmail: contactEmail.trim() || undefined,
@@ -160,7 +162,7 @@ export default function EventSubmitPage() {
             <span className="eyebrow">Submit</span>
             <h1>New event</h1>
             <p className="events-subtitle">
-              It will be reviewed by a moderator before it appears on the map.
+              It goes live on the map as soon as you submit it.
             </p>
           </div>
           <Link to="/events" className="btn-outline">Cancel</Link>
@@ -238,7 +240,7 @@ export default function EventSubmitPage() {
             />
           </label>
 
-          {kind === 'HACKATHON' && (
+          {showCompetition && (
             <>
               <div className="field-row">
                 <label className="field">

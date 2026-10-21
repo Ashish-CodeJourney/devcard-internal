@@ -132,6 +132,53 @@ export default function EventDetailScreen({ route, navigation }: Props) {
                 <AppText variant="body" tone="secondary" style={styles.description}>{event.description}</AppText>
               ) : null}
 
+              {event && (event.prizePool || event.mode || event.teamSizeMin != null ||
+                event.teamSizeMax != null || event.registrationDeadline ||
+                event.contactEmail || event.contactPhone) ? (
+                <View style={styles.metaList}>
+                  {event.prizePool ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="trophy-outline" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        Prize pool: {event.prizePool}
+                      </AppText>
+                    </View>
+                  ) : null}
+                  {event.mode ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="earth" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        {event.mode.charAt(0) + event.mode.slice(1).toLowerCase()}
+                      </AppText>
+                    </View>
+                  ) : null}
+                  {(event.teamSizeMin != null || event.teamSizeMax != null) ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="account-group-outline" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        Team: {event.teamSizeMin ?? event.teamSizeMax}{event.teamSizeMin != null && event.teamSizeMax != null && event.teamSizeMin !== event.teamSizeMax ? `–${event.teamSizeMax}` : ''}
+                      </AppText>
+                    </View>
+                  ) : null}
+                  {event.registrationDeadline ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="calendar-clock-outline" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        Register by {fmtDate(event.registrationDeadline)}
+                      </AppText>
+                    </View>
+                  ) : null}
+                  {event.contactEmail || event.contactPhone ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="email-outline" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        {[event.contactEmail, event.contactPhone].filter(Boolean).join(' · ')}
+                      </AppText>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
               <View style={styles.actions}>
                 <Button
                   label={joining ? 'Joining…' : 'Join event'}

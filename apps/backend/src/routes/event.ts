@@ -323,9 +323,8 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
             return !!existing
         })
 
-        // Submissions are moderated. Admins publish straight away so they can
-        // seed the map without approving their own entries.
-        const status = (await isAdmin(app, userId)) ? 'APPROVED' : 'PENDING'
+        // Submissions go live immediately — there is no moderation queue.
+        const status = 'APPROVED'
 
         try {
             const newEvent = await app.prisma.event.create({
