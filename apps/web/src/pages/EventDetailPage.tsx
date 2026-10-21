@@ -2,7 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import EventsMap, { type MapMarker } from '../components/EventsMap';
-import { formatEventDates, formatPlace, getEvent, type EventDetail } from '../lib/events';
+import { EVENT_MODES, formatEventDates, formatPlace, formatTeamSize, getEvent, type EventDetail } from '../lib/events';
+
+const hasCompetitionDetails = (e: EventDetail) =>
+  Boolean(e.prizePool || e.mode || e.teamSizeMin != null || e.teamSizeMax != null ||
+    e.registrationDeadline || e.contactEmail || e.contactPhone);
+
+function formatDeadline(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
 import './EventsPages.css';
 
 export default function EventDetailPage() {
@@ -113,6 +123,49 @@ export default function EventDetailPage() {
                     </dd>
                   </div>
                 </dl>
+
+                {hasCompetitionDetails(event) && (
+                  <dl className="event-facts">
+                    {event.prizePool && (
+                      <div>
+                        <dt>Prize pool</dt>
+                        <dd>{event.prizePool}</dd>
+                      </div>
+                    )}
+                    {event.mode && (
+                      <div>
+                        <dt>Mode</dt>
+                        <dd>{EVENT_MODES.find(m => m.id === event.mode)?.label ?? event.mode}</dd>
+                      </div>
+                    )}
+                    {formatTeamSize(event.teamSizeMin, event.teamSizeMax) && (
+                      <div>
+                        <dt>Team size</dt>
+                        <dd>{formatTeamSize(event.teamSizeMin, event.teamSizeMax)}</dd>
+                      </div>
+                    )}
+                    {event.registrationDeadline && (
+                      <div>
+                        <dt>Register by</dt>
+                        <dd>{formatDeadline(event.registrationDeadline)}</dd>
+                      </div>
+                    )}
+                    {(event.contactEmail || event.contactPhone) && (
+                      <div>
+                        <dt>Organiser contact</dt>
+                        <dd>
+                          {event.contactEmail && (
+                            <a href={`mailto:${event.contactEmail}`}>{event.contactEmail}</a>
+                          )}
+                          {event.contactEmail && event.contactPhone && ' · '}
+                          {event.contactPhone && (
+                            <a href={`tel:${event.contactPhone.replace(/\s/g, '')}`}>{event.contactPhone}</a>
+                          )}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
 
                 <div className="event-app-hint">
                   <p>

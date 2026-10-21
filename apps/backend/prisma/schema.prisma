@@ -244,6 +244,12 @@ enum EventStatus {
   REJECTED  // declined by an admin
 }
 
+enum EventMode {
+  ONLINE
+  OFFLINE
+  HYBRID
+}
+
 model Event {
   id          String   @id @default(uuid())
   name        String
@@ -259,12 +265,21 @@ model Event {
   // ─── Discovery / moderation ───
   // Nothing is publicly visible until an admin approves it.
   kind            EventKind   @default(HACKATHON)
-  status          EventStatus @default(PENDING)
-  latitude        Float?
-  longitude       Float?
-  city            String?
-  country         String?
-  url             String? // external registration link
+    status          EventStatus @default(PENDING)
+    latitude        Float?
+    longitude       Float?
+    city            String?
+    country         String?
+    url             String? // external registration link
+    // ─── Competition ───
+    // Free-text prize pool ("₹5,00,000 + swags") beats amount+currency columns.
+    prizePool            String?
+    contactEmail         String?
+    contactPhone         String?
+    registrationDeadline DateTime?
+    teamSizeMin          Int?
+    teamSizeMax          Int?
+    mode                 EventMode?
   coverImageUrl   String?
   reviewedById    String?
   reviewedAt      DateTime?

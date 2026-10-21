@@ -2,6 +2,7 @@ import {z} from 'zod'
 
 export const EVENT_KINDS = ['HACKATHON', 'MEETUP', 'CONFERENCE', 'OTHER'] as const
 export const EVENT_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
+export const EVENT_MODES = ['ONLINE', 'OFFLINE', 'HYBRID'] as const
 
 export const createEventSchema = z.object({
     name: z.string().min(3, 'Event name must be at least 3 characters long').max(100,'Event name cannot be longer than 100 characters'), 
@@ -20,6 +21,15 @@ export const createEventSchema = z.object({
     /** External registration link. */
     url: z.string().url('Registration link must be a valid URL').max(500).optional(),
     coverImageUrl: z.string().url().max(500).optional(),
+
+    // ─── Competition ───
+    prizePool: z.string().max(200).optional(),
+    contactEmail: z.string().email('Contact email must be a valid email').max(200).optional(),
+    contactPhone: z.string().max(40).optional(),
+    registrationDeadline: z.string().pipe(z.coerce.date()).optional(),
+    teamSizeMin: z.number().int().min(1).max(100).optional(),
+    teamSizeMax: z.number().int().min(1).max(100).optional(),
+    mode: z.enum(EVENT_MODES).optional(),
 })
 .superRefine((data, ctx) => {
     // Coordinates must be supplied together.
@@ -37,6 +47,17 @@ export const createEventSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: 'End date must be after the start date',
             path: ['endDate'],
+        })
+    }
+    if (
+        data.teamSizeMin !== undefined &&
+        data.teamSizeMax !== undefined &&
+        data.teamSizeMax < data.teamSizeMin
+    ) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Max team size must be at least the min team size',
+            path: ['teamSizeMax'],
         })
     }
 })

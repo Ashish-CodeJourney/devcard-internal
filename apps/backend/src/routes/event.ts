@@ -87,6 +87,14 @@ type EventDetails = {
     // Discovery / moderation
     kind: string;
     status: string;
+    // Competition
+    prizePool: string | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    registrationDeadline: Date | null;
+    teamSizeMin: number | null;
+    teamSizeMax: number | null;
+    mode: string | null;
     latitude: number | null;
     longitude: number | null;
     city: string | null;
@@ -305,6 +313,8 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
         const {
             name, description, startDate, endDate, isPublic, location,
             kind, latitude, longitude, city, country, url, coverImageUrl,
+            prizePool, contactEmail, contactPhone, registrationDeadline,
+            teamSizeMin, teamSizeMax, mode,
         } = parsed.data
 
         const finalSlug = await generateUniqueSlug(name, async(slug) => {
@@ -335,6 +345,13 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
                     country: country ?? null,
                     url: url ?? null,
                     coverImageUrl: coverImageUrl ?? null,
+                    prizePool: prizePool ?? null,
+                    contactEmail: contactEmail ?? null,
+                    contactPhone: contactPhone ?? null,
+                    registrationDeadline: registrationDeadline ?? null,
+                    teamSizeMin: teamSizeMin ?? null,
+                    teamSizeMax: teamSizeMax ?? null,
+                    mode: mode ?? null,
                     status,
                 }
             })
@@ -406,6 +423,14 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
             url: details.url,
             coverImageUrl: details.coverImageUrl,
             rejectionReason: details.rejectionReason,
+            // Competition
+            prizePool: details.prizePool,
+            contactEmail: details.contactEmail,
+            contactPhone: details.contactPhone,
+            registrationDeadline: details.registrationDeadline,
+            teamSizeMin: details.teamSizeMin,
+            teamSizeMax: details.teamSizeMax,
+            mode: details.mode,
         }
         
         return response; 

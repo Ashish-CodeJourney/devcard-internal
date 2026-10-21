@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import EventsMap from '../components/EventsMap';
 import { useAuth } from '../lib/auth';
-import { EVENT_KINDS, createEvent, type EventKind } from '../lib/events';
+import { EVENT_KINDS, EVENT_MODES, createEvent, type EventKind, type EventMode } from '../lib/events';
 import { geocodeAddress } from '../lib/geocode';
 import './EventsPages.css';
 
@@ -23,6 +23,14 @@ export default function EventSubmitPage() {
   const [endDate, setEndDate] = useState('');
   const [url, setUrl] = useState('');
   const [picked, setPicked] = useState<[number, number] | null>(null);
+  // Competition details (hackathons).
+  const [prizePool, setPrizePool] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [regDeadline, setRegDeadline] = useState('');
+  const [teamMin, setTeamMin] = useState('');
+  const [teamMax, setTeamMax] = useState('');
+  const [mode, setMode] = useState<EventMode | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Auto-pin from the typed address. Manual map clicks win until the address changes.
@@ -83,6 +91,12 @@ export default function EventSubmitPage() {
       setError('The end date must be after the start date.');
       return;
     }
+    const min = teamMin.trim() === '' ? undefined : parseInt(teamMin, 10);
+    const max = teamMax.trim() === '' ? undefined : parseInt(teamMax, 10);
+    if (min !== undefined && max !== undefined && max < min) {
+      setError('Max team size must be at least the min team size.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -98,6 +112,17 @@ export default function EventSubmitPage() {
         url: url.trim() || undefined,
         latitude: picked?.[0],
         longitude: picked?.[1],
+        ...(kind === 'HACKATHON'
+          ? {
+              prizePool: prizePool.trim() || undefined,
+              contactEmail: contactEmail.trim() || undefined,
+              contactPhone: contactPhone.trim() || undefined,
+              registrationDeadline: regDeadline ? new Date(regDeadline).toISOString() : undefined,
+              teamSizeMin: min,
+              teamSizeMax: max,
+              mode: mode || undefined,
+            }
+          : {}),
       });
       navigate('/events/mine?submitted=1', { replace: true });
     } catch (err: any) {
@@ -212,6 +237,87 @@ export default function EventSubmitPage() {
               placeholder="What is this event about, who is it for, prizes, tracks…"
             />
           </label>
+
+          {kind === 'HACKATHON' && (
+            <>
+              <div className="field-row">
+                <label className="field">
+                  <span>Prize pool</span>
+                  <input
+                    value={prizePool}
+                    onChange={e => setPrizePool(e.target.value)}
+                    maxLength={200}
+                    placeholder="e.g. ₹5,00,000 + swags"
+                  />
+                </label>
+                <label className="field">
+                  <span>Mode</span>
+                  <select value={mode} onChange={e => setMode(e.target.value as EventMode | '')}>
+                    <option value="">Select…</option>
+                    {EVENT_MODES.map(m => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="field-row">
+                <label className="field">
+                  <span>Team size (min)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={teamMin}
+                    onChange={e => setTeamMin(e.target.value)}
+                    placeholder="e.g. 2"
+                  />
+                </label>
+                <label className="field">
+                  <span>Team size (max)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={teamMax}
+                    onChange={e => setTeamMax(e.target.value)}
+                    placeholder="e.g. 4"
+                  />
+                </label>
+              </div>
+
+              <div className="field-row">
+                <label className="field">
+                  <span>Registration deadline</span>
+                  <input
+                    type="datetime-local"
+                    value={regDeadline}
+                    onChange={e => setRegDeadline(e.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>Organiser email</span>
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={e => setContactEmail(e.target.value)}
+                    maxLength={200}
+                    placeholder="team@hackathon.dev"
+                  />
+                </label>
+              </div>
+
+              <label className="field">
+                <span>Organiser phone</span>
+                <input
+                  value={contactPhone}
+                  onChange={e => setContactPhone(e.target.value)}
+                  maxLength={40}
+                  placeholder="+91 98765 43210"
+                />
+              </label>
+            </>
+          )}
 
           <div className="field">
             <span>Location on the map</span>

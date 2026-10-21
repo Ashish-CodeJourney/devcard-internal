@@ -2,6 +2,13 @@ import { apiFetch } from './api';
 
 export type EventKind = 'HACKATHON' | 'MEETUP' | 'CONFERENCE' | 'OTHER';
 export type EventStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type EventMode = 'ONLINE' | 'OFFLINE' | 'HYBRID';
+
+export const EVENT_MODES: { id: EventMode; label: string }[] = [
+  { id: 'ONLINE', label: 'Online' },
+  { id: 'OFFLINE', label: 'In person' },
+  { id: 'HYBRID', label: 'Hybrid' },
+];
 
 export const EVENT_KINDS: { id: EventKind; label: string }[] = [
   { id: 'HACKATHON', label: 'Hackathon' },
@@ -35,6 +42,13 @@ export interface EventDetail extends EventSummary {
   createdAt: string;
   attendeesCount: number;
   rejectionReason: string | null;
+  prizePool: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  registrationDeadline: string | null;
+  teamSizeMin: number | null;
+  teamSizeMax: number | null;
+  mode: EventMode | null;
 }
 
 export interface EventInput {
@@ -49,6 +63,19 @@ export interface EventInput {
   url?: string;
   latitude?: number;
   longitude?: number;
+  prizePool?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  registrationDeadline?: string;
+  teamSizeMin?: number;
+  teamSizeMax?: number;
+  mode?: EventMode;
+}
+
+export function formatTeamSize(min: number | null, max: number | null): string | null {
+  if (min == null && max == null) return null;
+  if (min != null && max != null) return min === max ? `${min}` : `${min}–${max}`;
+  return `${min ?? max}`;
 }
 
 type Query = Record<string, string | number | undefined>;
