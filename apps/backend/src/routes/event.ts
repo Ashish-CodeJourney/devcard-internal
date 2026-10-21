@@ -95,6 +95,12 @@ type EventDetails = {
     teamSizeMin: number | null;
     teamSizeMax: number | null;
     mode: string | null;
+    // Conference
+    ticketPrice: string | null;
+    capacity: number | null;
+    tracks: string | null;
+    cfpDeadline: Date | null;
+    cfpUrl: string | null;
     latitude: number | null;
     longitude: number | null;
     city: string | null;
@@ -315,6 +321,7 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
             kind, latitude, longitude, city, country, url, coverImageUrl,
             prizePool, contactEmail, contactPhone, registrationDeadline,
             teamSizeMin, teamSizeMax, mode,
+            ticketPrice, capacity, tracks, cfpDeadline, cfpUrl,
         } = parsed.data
 
         const finalSlug = await generateUniqueSlug(name, async(slug) => {
@@ -351,6 +358,11 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
                     teamSizeMin: teamSizeMin ?? null,
                     teamSizeMax: teamSizeMax ?? null,
                     mode: mode ?? null,
+                    ticketPrice: ticketPrice ?? null,
+                    capacity: capacity ?? null,
+                    tracks: tracks ?? null,
+                    cfpDeadline: cfpDeadline ?? null,
+                    cfpUrl: cfpUrl ?? null,
                     status,
                 }
             })
@@ -430,6 +442,11 @@ export async function eventRoutes(app:FastifyInstance): Promise<void> {
             teamSizeMin: details.teamSizeMin,
             teamSizeMax: details.teamSizeMax,
             mode: details.mode,
+            ticketPrice: details.ticketPrice,
+            capacity: details.capacity,
+            tracks: details.tracks,
+            cfpDeadline: details.cfpDeadline,
+            cfpUrl: details.cfpUrl,
         }
         
         return response; 

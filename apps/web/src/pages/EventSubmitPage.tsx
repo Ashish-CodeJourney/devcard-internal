@@ -31,9 +31,15 @@ export default function EventSubmitPage() {
   const [teamMin, setTeamMin] = useState('');
   const [teamMax, setTeamMax] = useState('');
   const [mode, setMode] = useState<EventMode | ''>('');
+  // Conference details (ticketing + call for papers).
+  const [ticketPrice, setTicketPrice] = useState('');
+  const [capacity, setCapacity] = useState('');
+  const [tracks, setTracks] = useState('');
+  const [cfpDeadline, setCfpDeadline] = useState('');
+  const [cfpUrl, setCfpUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  // Competition details apply to hackathons and conferences.
-  const showCompetition = kind === 'HACKATHON' || kind === 'CONFERENCE';
+  const showCompetition = kind === 'HACKATHON';
+  const showConference = kind === 'CONFERENCE';
   const [error, setError] = useState<string | null>(null);
   // Auto-pin from the typed address. Manual map clicks win until the address changes.
   const [geoStatus, setGeoStatus] = useState<GeoStatus>('idle');
@@ -99,6 +105,10 @@ export default function EventSubmitPage() {
       setError('Max team size must be at least the min team size.');
       return;
     }
+    if (showConference && cfpDeadline && new Date(cfpDeadline) >= new Date(startDate)) {
+      setError('The call for papers must close before the event starts.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -123,6 +133,18 @@ export default function EventSubmitPage() {
               teamSizeMin: min,
               teamSizeMax: max,
               mode: mode || undefined,
+            }
+          : {}),
+        ...(showConference
+          ? {
+              ticketPrice: ticketPrice.trim() || undefined,
+              capacity: capacity.trim() === '' ? undefined : parseInt(capacity, 10),
+              tracks: tracks.trim() || undefined,
+              cfpDeadline: cfpDeadline ? new Date(cfpDeadline).toISOString() : undefined,
+              cfpUrl: cfpUrl.trim() || undefined,
+              mode: mode || undefined,
+              contactEmail: contactEmail.trim() || undefined,
+              contactPhone: contactPhone.trim() || undefined,
             }
           : {}),
       });
@@ -318,6 +340,97 @@ export default function EventSubmitPage() {
                   placeholder="+91 98765 43210"
                 />
               </label>
+            </>
+          )}
+
+          {showConference && (
+            <>
+              <div className="field-row">
+                <label className="field">
+                  <span>Ticket price</span>
+                  <input
+                    value={ticketPrice}
+                    onChange={e => setTicketPrice(e.target.value)}
+                    maxLength={100}
+                    placeholder="e.g. Free, ₹999, $49"
+                  />
+                </label>
+                <label className="field">
+                  <span>Mode</span>
+                  <select value={mode} onChange={e => setMode(e.target.value as EventMode | '')}>
+                    <option value="">Select…</option>
+                    {EVENT_MODES.map(m => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="field-row">
+                <label className="field">
+                  <span>Capacity (seats)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1000000}
+                    value={capacity}
+                    onChange={e => setCapacity(e.target.value)}
+                    placeholder="e.g. 500"
+                  />
+                </label>
+                <label className="field">
+                  <span>Tracks / topics</span>
+                  <input
+                    value={tracks}
+                    onChange={e => setTracks(e.target.value)}
+                    maxLength={300}
+                    placeholder="e.g. AI, Web3, DevTools"
+                  />
+                </label>
+              </div>
+
+              <div className="field-row">
+                <label className="field">
+                  <span>Call for papers closes</span>
+                  <input
+                    type="datetime-local"
+                    value={cfpDeadline}
+                    onChange={e => setCfpDeadline(e.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>CFP submission link</span>
+                  <input
+                    type="url"
+                    value={cfpUrl}
+                    onChange={e => setCfpUrl(e.target.value)}
+                    maxLength={500}
+                    placeholder="https://…"
+                  />
+                </label>
+              </div>
+
+              <div className="field-row">
+                <label className="field">
+                  <span>Organiser email</span>
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={e => setContactEmail(e.target.value)}
+                    maxLength={200}
+                    placeholder="team@conference.dev"
+                  />
+                </label>
+                <label className="field">
+                  <span>Organiser phone</span>
+                  <input
+                    value={contactPhone}
+                    onChange={e => setContactPhone(e.target.value)}
+                    maxLength={40}
+                    placeholder="+91 98765 43210"
+                  />
+                </label>
+              </div>
             </>
           )}
 

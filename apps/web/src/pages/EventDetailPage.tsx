@@ -8,6 +8,9 @@ const hasCompetitionDetails = (e: EventDetail) =>
   Boolean(e.prizePool || e.mode || e.teamSizeMin != null || e.teamSizeMax != null ||
     e.registrationDeadline || e.contactEmail || e.contactPhone);
 
+const hasConferenceDetails = (e: EventDetail) =>
+  Boolean(e.ticketPrice || e.capacity != null || e.tracks || e.cfpDeadline || e.cfpUrl);
+
 function formatDeadline(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
     day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
@@ -161,6 +164,45 @@ export default function EventDetailPage() {
                           {event.contactPhone && (
                             <a href={`tel:${event.contactPhone.replace(/\s/g, '')}`}>{event.contactPhone}</a>
                           )}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
+
+                {hasConferenceDetails(event) && (
+                  <dl className="event-facts">
+                    {event.ticketPrice && (
+                      <div>
+                        <dt>Tickets</dt>
+                        <dd>{event.ticketPrice}</dd>
+                      </div>
+                    )}
+                    {event.capacity != null && (
+                      <div>
+                        <dt>Capacity</dt>
+                        <dd>{event.capacity} seats</dd>
+                      </div>
+                    )}
+                    {event.tracks && (
+                      <div>
+                        <dt>Tracks</dt>
+                        <dd>{event.tracks}</dd>
+                      </div>
+                    )}
+                    {event.cfpDeadline && (
+                      <div>
+                        <dt>Call for papers closes</dt>
+                        <dd>{formatDeadline(event.cfpDeadline)}</dd>
+                      </div>
+                    )}
+                    {event.cfpUrl && (
+                      <div>
+                        <dt>Submit a talk</dt>
+                        <dd>
+                          <a href={event.cfpUrl} target="_blank" rel="noopener noreferrer">
+                            Proposal form
+                          </a>
                         </dd>
                       </div>
                     )}

@@ -61,6 +61,11 @@ export interface EventDetail extends EventSummary {
   teamSizeMin: number | null;
   teamSizeMax: number | null;
   mode: string | null;
+  ticketPrice: string | null;
+  capacity: number | null;
+  tracks: string | null;
+  cfpDeadline: string | null;
+  cfpUrl: string | null;
 }
 
 export interface EventAttendee {

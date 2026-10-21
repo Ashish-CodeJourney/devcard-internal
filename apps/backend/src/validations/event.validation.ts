@@ -30,6 +30,13 @@ export const createEventSchema = z.object({
     teamSizeMin: z.number().int().min(1).max(100).optional(),
     teamSizeMax: z.number().int().min(1).max(100).optional(),
     mode: z.enum(EVENT_MODES).optional(),
+
+    // ─── Conference ───
+    ticketPrice: z.string().max(100).optional(),
+    capacity: z.number().int().min(1).max(1000000).optional(),
+    tracks: z.string().max(300).optional(),
+    cfpDeadline: z.string().pipe(z.coerce.date()).optional(),
+    cfpUrl: z.string().url('CFP link must be a valid URL').max(500).optional(),
 })
 .superRefine((data, ctx) => {
     // Coordinates must be supplied together.
@@ -58,6 +65,13 @@ export const createEventSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: 'Max team size must be at least the min team size',
             path: ['teamSizeMax'],
+        })
+    }
+    if (data.cfpDeadline !== undefined && data.cfpDeadline >= data.startDate) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'The call for papers must close before the event starts',
+            path: ['cfpDeadline'],
         })
     }
 })

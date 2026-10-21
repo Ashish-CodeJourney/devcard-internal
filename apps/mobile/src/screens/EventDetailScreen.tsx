@@ -134,6 +134,8 @@ export default function EventDetailScreen({ route, navigation }: Props) {
 
               {event && (event.prizePool || event.mode || event.teamSizeMin != null ||
                 event.teamSizeMax != null || event.registrationDeadline ||
+                event.ticketPrice || event.capacity != null || event.tracks ||
+                event.cfpDeadline || event.cfpUrl ||
                 event.contactEmail || event.contactPhone) ? (
                 <View style={styles.metaList}>
                   {event.prizePool ? (
@@ -165,6 +167,38 @@ export default function EventDetailScreen({ route, navigation }: Props) {
                       <Icon name="calendar-clock-outline" size={16} color={colors.textSecondary} />
                       <AppText variant="caption" tone="secondary" style={styles.metaText}>
                         Register by {fmtDate(event.registrationDeadline)}
+                      </AppText>
+                    </View>
+                  ) : null}
+                  {event.ticketPrice ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="ticket-outline" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        Tickets: {event.ticketPrice}
+                      </AppText>
+                    </View>
+                  ) : null}
+                  {event.capacity != null ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="seat-outline" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        Capacity: {event.capacity} seats
+                      </AppText>
+                    </View>
+                  ) : null}
+                  {event.tracks ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="tag-multiple-outline" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        Tracks: {event.tracks}
+                      </AppText>
+                    </View>
+                  ) : null}
+                  {event.cfpDeadline || event.cfpUrl ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="microphone-variant" size={16} color={colors.textSecondary} />
+                      <AppText variant="caption" tone="secondary" style={styles.metaText}>
+                        CFP closes {event.cfpDeadline ? fmtDate(event.cfpDeadline) : 'soon'}{event.cfpUrl ? ` — ${event.cfpUrl}` : ''}
                       </AppText>
                     </View>
                   ) : null}

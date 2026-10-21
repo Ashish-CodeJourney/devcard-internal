@@ -49,6 +49,11 @@ export interface EventDetail extends EventSummary {
   teamSizeMin: number | null;
   teamSizeMax: number | null;
   mode: EventMode | null;
+  ticketPrice: string | null;
+  capacity: number | null;
+  tracks: string | null;
+  cfpDeadline: string | null;
+  cfpUrl: string | null;
 }
 
 export interface EventInput {
@@ -70,6 +75,11 @@ export interface EventInput {
   teamSizeMin?: number;
   teamSizeMax?: number;
   mode?: EventMode;
+  ticketPrice?: string;
+  capacity?: number;
+  tracks?: string;
+  cfpDeadline?: string;
+  cfpUrl?: string;
 }
 
 export function formatTeamSize(min: number | null, max: number | null): string | null {

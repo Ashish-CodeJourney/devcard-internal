@@ -280,6 +280,13 @@ model Event {
     teamSizeMin          Int?
     teamSizeMax          Int?
     mode                 EventMode?
+    // ─── Conference ───
+    // Ticketing + call-for-papers: what Luma/Eventbrite-style listings ask for.
+    ticketPrice          String?
+    capacity             Int?
+    tracks               String?
+    cfpDeadline          DateTime?
+    cfpUrl               String?
   coverImageUrl   String?
   reviewedById    String?
   reviewedAt      DateTime?
