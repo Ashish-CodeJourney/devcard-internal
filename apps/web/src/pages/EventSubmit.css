@@ -1,0 +1,371 @@
+/* ─── Event submit sheet — light form card (scoped, does not touch EventsPages.css) ─── */
+
+.event-sheet {
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+  max-width: 920px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Navy header band */
+.event-sheet-band {
+  background: #1e3a5f;
+  color: #ffffff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+}
+
+.event-sheet-band h1 {
+  margin: 2px 0 4px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.event-sheet-band p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.event-sheet-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #7dd3fc;
+}
+
+.event-sheet-close {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.event-sheet-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.event-sheet-error {
+  margin: 16px 24px 0;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.88rem;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.event-sheet-body {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Boxed sub-sections */
+.event-sheet-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.event-sheet-box-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1e3a5f;
+}
+
+/* Flexible rows — fields share the row, wrap on narrow screens */
+.sheet-row {
+  display: flex;
+  gap: 14px 16px;
+  flex-wrap: wrap;
+}
+
+.sheet-field {
+  flex: 1 1 180px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.sheet-field > span {
+  font-size: 0.76rem;
+}
+
+.sheet-field input,
+.sheet-field select,
+.sheet-field textarea {
+  font: inherit;
+  font-weight: 400;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 9px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sheet-field input:focus,
+.sheet-field select:focus,
+.sheet-field textarea:focus {
+  outline: none;
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
+}
+
+.sheet-field textarea {
+  resize: vertical;
+}
+
+/* Radio pills (event type / mode) */
+.sheet-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sheet-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.sheet-pill:has(input:checked) {
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #ffffff;
+}
+
+.sheet-pill input {
+  accent-color: #14b8a6;
+  margin: 0;
+}
+
+.sheet-inline-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.sheet-inline-radios label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.sheet-inline-radios input {
+  accent-color: #14b8a6;
+  margin: 0;
+}
+
+/* Profile / autofill card */
+.event-sheet-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  flex-wrap: wrap;
+}
+
+.event-sheet-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #1e3a5f;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.event-sheet-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.event-sheet-profile-info {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event-sheet-profile-info strong {
+  font-size: 0.9rem;
+  color: #111827;
+}
+
+.event-sheet-profile-info span {
+  font-size: 0.78rem;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-sheet-profile-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Buttons */
+.btn-navy {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #1e3a5f;
+  color: #ffffff;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+
+.btn-navy:hover:not(:disabled) {
+  background: #16304f;
+}
+
+.btn-navy:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.btn-teal {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #14b8a6;
+  color: #ffffff;
+  border: 1px solid #14b8a6;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-teal:hover {
+  background: #0d9488;
+}
+
+.btn-sheet-outline {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 22px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-sheet-outline:hover {
+  border-color: #9ca3af;
+}
+
+.btn-remember {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: transparent;
+  color: #0d9488;
+  border: 1px dashed #99f6e4;
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-remember:hover {
+  background: #f0fdfa;
+}
+
+.event-sheet-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sheet-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.sheet-hint .link-button {
+  font: inherit;
+  color: #0d9488;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .event-sheet-body {
+    padding: 16px 16px 20px;
+  }
+
+  .event-sheet-band {
+    padding: 16px;
+  }
+}
