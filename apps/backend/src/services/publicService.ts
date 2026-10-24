@@ -69,11 +69,11 @@ export async function getPublicProfile(
   const baseLinks = user.platformLinks.map((link: any) => ({ id: link.id, platform: link.platform, username: link.username, url: link.url, displayOrder: link.displayOrder, ...verificationFields(link), followed: false }))
 
   if (app.redis) {
-    const entry = { _userId: user.id, username: user.username, displayName: user.displayName, bio: user.bio, pronouns: user.pronouns, role: user.role, company: user.company, avatarUrl: user.avatarUrl, accentColor: user.accentColor, links: baseLinks }
+    const entry = { _userId: user.id, username: user.username, displayName: user.displayName, bio: user.bio, pronouns: user.pronouns, role: user.role, company: user.company, location: user.location, avatarUrl: user.avatarUrl, accentColor: user.accentColor, links: baseLinks }
     app.redis.set(cacheKey, JSON.stringify(entry), 'EX', PROFILE_CACHE_TTL).catch((err: unknown) => app.log.warn(`Redis cache write failed for ${cacheKey}: ${getErrorMessage(err)}`))
   }
 
-  const response = { username: user.username, displayName: user.displayName, bio: user.bio, pronouns: user.pronouns, role: user.role, company: user.company, avatarUrl: user.avatarUrl, accentColor: user.accentColor, links: baseLinks.map((link) => ({ ...link, followed: followedLinkIds.includes(link.id) })) }
+  const response = { username: user.username, displayName: user.displayName, bio: user.bio, pronouns: user.pronouns, role: user.role, company: user.company, location: user.location, avatarUrl: user.avatarUrl, accentColor: user.accentColor, links: baseLinks.map((link) => ({ ...link, followed: followedLinkIds.includes(link.id) })) }
 
   return { cached: false, data: response, cacheKey }
 }

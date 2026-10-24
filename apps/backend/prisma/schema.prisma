@@ -23,6 +23,7 @@ model User {
   role          String?
   authRole      Role      @default(USER)
   company       String?
+  location      String?
   avatarUrl     String?   @map("avatar_url")
   accentColor   String    @default("#6366f1") @map("accent_color")
   emailVerified Boolean   @default(false) @map("email_verified")

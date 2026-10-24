@@ -16,6 +16,7 @@ export interface PublicProfile {
   pronouns: string | null;
   role: string | null;
   company: string | null;
+  location: string | null;
   avatarUrl: string | null;
   accentColor: string;
   links: PlatformLink[];

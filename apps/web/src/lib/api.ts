@@ -43,7 +43,7 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Set false for public endpoints (skips the Authorization header). */
   auth?: boolean;

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { profileRoutes } from '../routes/profiles.js';
 
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 
 const mockUser = {
   id: 'user-123',
@@ -117,7 +117,10 @@ describe('PUT /api/profiles/me', () => {
     // Both requests pass the findFirst check; the DB unique constraint fires on
     // the losing write — Prisma raises P2002.
     mockPrisma.user.findFirst.mockResolvedValue(null);
-    const p2002 = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+    const p2002 = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+      code: 'P2002',
+      clientVersion: '6.19.3',
+    });
     mockPrisma.user.update.mockRejectedValue(p2002);
 
     const app = await buildApp();

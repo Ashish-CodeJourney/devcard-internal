@@ -3,7 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { PLATFORMS, getProfileUrl } from '../shared';
 import type { PublicProfile } from '../shared';
 import { apiFetch } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import ThemeCustomizer from '../components/ThemeCustomizer';
 import './ProfilePage.css';
+import './EventSubmit.css';
 
 const platformColors: Record<string, string> = {
   github: '#181717', linkedin: '#0A66C2', twitter: '#000000',
@@ -15,12 +18,20 @@ const platformColors: Record<string, string> = {
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
   const [copyStatus, setCopyStatus] = useState<'success' | 'error'>('success');
+  // Owner-only editing.
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ displayName: '', role: '', company: '', location: '', bio: '' });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const isOwner = !!user && !!profile && user.username === profile.username;
 
   useEffect(() => {
     setMounted(true);
@@ -66,6 +77,49 @@ export default function ProfilePage() {
       document.title = 'User Not Found | DevCard';
     }
   }, [profile, error]);
+
+  function openEdit() {
+    if (!profile) return;
+    setForm({
+      displayName: profile.displayName,
+      role: profile.role ?? '',
+      company: profile.company ?? '',
+      location: profile.location ?? '',
+      bio: profile.bio ?? '',
+    });
+    setSaveError(null);
+    setEditing(true);
+  }
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profile) return;
+    const displayName = form.displayName.trim();
+    if (!displayName) {
+      setSaveError('Display name cannot be empty.');
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await apiFetch<Partial<PublicProfile>>('/api/profiles/me', {
+        method: 'PUT',
+        body: {
+          displayName,
+          role: form.role.trim() || null,
+          company: form.company.trim() || null,
+          location: form.location.trim() || null,
+          bio: form.bio.trim() || null,
+        },
+      });
+      setProfile({ ...profile, ...updated });
+      setEditing(false);
+    } catch (err: any) {
+      setSaveError(err?.message ?? 'Could not save your profile.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -139,6 +193,27 @@ export default function ProfilePage() {
               </div>
             )}
             {profile.bio && <p className="bio">{profile.bio}</p>}
+
+            <dl className="profile-meta">
+              {profile.location && (
+                <div className="profile-meta-row">
+                  <span className="profile-meta-ico" aria-hidden="true">📍</span>
+                  <div>
+                    <dt>Place</dt>
+                    <dd>{profile.location}</dd>
+                  </div>
+                </div>
+              )}
+              {isOwner && user?.email && (
+                <div className="profile-meta-row">
+                  <span className="profile-meta-ico" aria-hidden="true">✉️</span>
+                  <div>
+                    <dt>Email <span className="profile-meta-note">(only visible to you)</span></dt>
+                    <dd>{user.email}</dd>
+                  </div>
+                </div>
+              )}
+            </dl>
           </header>
 
           <div className="links-grid" id="profile-links">
@@ -172,11 +247,95 @@ export default function ProfilePage() {
             })}
           </div>
 
+          {isOwner && (
+            <div className="profile-owner-actions">
+              <button type="button" className="btn-teal" onClick={() => (editing ? setEditing(false) : openEdit())}>
+                {editing ? 'Close editor' : 'Edit profile'}
+              </button>
+            </div>
+          )}
+
           <footer className="card-footer">
             <p>Verified Developer Profile</p>
             <div className="logo-sm">⚡ DevCard</div>
           </footer>
         </div>
+
+        {isOwner && editing && (
+          <section className="profile-sheet" aria-label="Edit profile">
+            <h2 className="profile-sheet-title">Profile details</h2>
+            {saveError && <div className="event-sheet-error" style={{ margin: 0 }}>{saveError}</div>}
+            <form onSubmit={saveProfile}>
+              <div className="sheet-row">
+                <label className="sheet-field">
+                  <span>Name</span>
+                  <input
+                    value={form.displayName}
+                    onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
+                    required
+                    minLength={1}
+                    maxLength={100}
+                  />
+                </label>
+                <label className="sheet-field">
+                  <span>Role / title</span>
+                  <input
+                    value={form.role}
+                    onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                    maxLength={100}
+                    placeholder="e.g. Full Stack Engineer"
+                  />
+                </label>
+              </div>
+              <div className="sheet-row">
+                <label className="sheet-field">
+                  <span>Company</span>
+                  <input
+                    value={form.company}
+                    onChange={e => setForm(f => ({ ...f, company: e.target.value }))}
+                    maxLength={100}
+                    placeholder="e.g. DevCard Labs"
+                  />
+                </label>
+                <label className="sheet-field">
+                  <span>Place</span>
+                  <input
+                    value={form.location}
+                    onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                    maxLength={120}
+                    placeholder="e.g. Mumbai, Remote"
+                  />
+                </label>
+              </div>
+              <label className="sheet-field">
+                <span>Bio</span>
+                <textarea
+                  value={form.bio}
+                  onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                  rows={3}
+                  maxLength={300}
+                  placeholder="What do you do?"
+                />
+              </label>
+              <div className="profile-form-actions">
+                <button type="submit" className="btn-navy" disabled={saving}>
+                  {saving ? 'Saving…' : 'Save changes'}
+                </button>
+                <button type="button" className="btn-sheet-outline" onClick={() => setEditing(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        {isOwner && (
+          <section className="profile-sheet" aria-label="Customize appearance">
+            <h2 className="profile-sheet-title">Customize your DevCard</h2>
+            <p className="sheet-hint">Accent, background and font apply to this browser only — your public card looks the same for everyone.</p>
+            <ThemeCustomizer />
+          </section>
+        )}
 
         <div className="get-your-own">
           <p>Want a card like this?</p>
@@ -192,12 +351,12 @@ export default function ProfilePage() {
             >
               Copy Link
             </button>
+            {copyMessage && (
+              <p className={`copy-message ${copyStatus}`} aria-live="polite">
+                {copyMessage}
+              </p>
+            )}
           </div>
-          {copyMessage && (
-            <p className={`copy-message ${copyStatus}`} aria-live="polite">
-              {copyMessage}
-            </p>
-          )}
         </div>
       </main>
     </>

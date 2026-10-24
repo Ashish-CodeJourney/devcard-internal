@@ -28,6 +28,7 @@ export const updateProfileSchema = z.object({
   pronouns: z.string().max(50).nullable().optional(),
   role: z.string().max(100).nullable().optional(),
   company: z.string().max(100).nullable().optional(),
+  location: z.string().max(120).nullable().optional(),
   accentColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, 'Must be a valid hex color')
