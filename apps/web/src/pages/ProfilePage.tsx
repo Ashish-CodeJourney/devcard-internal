@@ -219,8 +219,8 @@ export default function ProfilePage() {
             )}
           </header>
 
-          <div className="links-grid" id="profile-links">
-            {profile.links.map((link, i) => {
+          <div className="profile-links" id="profile-links">
+            {profile.links.map(link => {
               const platform = PLATFORMS[link.platform];
               const color = platformColors[link.platform] || '#6366f1';
               return (
@@ -229,22 +229,17 @@ export default function ProfilePage() {
                   href={link.url || getProfileUrl(link.platform, link.username)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="link-tile glass"
-                  style={{ '--delay': `${i * 0.1}s` } as React.CSSProperties}
-                  id={`link-tile-${link.platform}`}
+                  className="profile-link"
+                  id={`link-${link.platform}`}
                 >
-                  <div className="tile-icon" style={{ background: color }}>
-                    <span className="platform-initial">
-                      {platform?.name.charAt(0) || '?'}
-                    </span>
-                  </div>
-                  <div className="tile-content">
-                    <span className="platform-name">
+                  <span className="profile-link-dot" style={{ background: color }} aria-hidden="true" />
+                  <span className="profile-link-main">
+                    <span className="profile-link-name">
                       {platform?.name || link.platform}
                     </span>
-                    <span className="username">@{link.username}</span>
-                  </div>
-                  <span className="arrow">→</span>
+                    <span className="profile-link-handle">@{link.username}</span>
+                  </span>
+                  <span className="profile-link-go" aria-hidden="true">→</span>
                 </a>
               );
             })}

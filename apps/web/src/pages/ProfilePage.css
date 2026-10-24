@@ -296,89 +296,77 @@
   align-items: center;
 }
 
-/* Links Grid */
-.links-grid {
+/* Simple profile link list */
+.profile-links {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  margin-top: 1.75rem;
+  border-top: 1px solid var(--border);
 }
 
-.link-tile {
+.profile-link {
   display: flex;
   align-items: center;
-  padding: 1rem;
-  border-radius: calc(var(--radius) * 1.1);
-  border: 1px solid var(--border);
+  gap: 12px;
+  padding: 0.8rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s ease, padding-left 0.2s ease;
+}
+
+.profile-link:hover,
+.profile-link:focus-visible {
   background: var(--bg-elevated);
-  box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.35);
-  transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
-  animation: slideIn 0.5s ease-out forwards;
-  animation-delay: var(--delay);
-  opacity: 0;
+  padding-left: 0.5rem;
 }
 
-.link-tile:hover,
-.link-tile:focus-visible {
-  transform: translateY(-2px);
-  border-color: var(--accent-border);
+.profile-link:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: -2px;
 }
 
-.link-tile:focus-visible {
-  outline: 3px solid var(--accent-border);
-  outline-offset: 3px;
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.tile-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 800;
-  font-size: 1.1rem;
-  box-shadow: 0 8px 18px -10px rgba(0,0,0,0.4);
+.profile-link-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.tile-content {
+.profile-link-main {
   flex: 1;
-  margin-left: 1.1rem;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.platform-name {
-  display: block;
+.profile-link-name {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
 }
 
-.username {
-  display: block;
-  font-size: 0.9rem;
+.profile-link:hover .profile-link-name {
+  color: var(--primary);
+}
+
+.profile-link-handle {
+  font-size: 0.82rem;
   color: var(--text-muted);
-  margin-top: 0.1rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.arrow {
+.profile-link-go {
   opacity: 0.45;
-  font-size: 1.2rem;
-  transition: transform 0.25s ease, opacity 0.25s ease;
+  font-size: 1.1rem;
+  transition: transform 0.2s ease, opacity 0.2s ease;
   flex-shrink: 0;
+  color: var(--text-secondary);
 }
 
-.link-tile:hover .arrow {
+.profile-link:hover .profile-link-go {
   opacity: 1;
-  transform: translateX(5px);
+  transform: translateX(4px);
 }
 
 /* Card Footer */
