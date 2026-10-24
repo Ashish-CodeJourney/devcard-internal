@@ -167,6 +167,15 @@ export default function ProfilePage() {
           style={{ '--accent': profile.accentColor } as React.CSSProperties}
           id="profile-card"
         >
+          {isOwner && (
+            <button
+              type="button"
+              className="profile-edit-float"
+              onClick={() => (editing ? setEditing(false) : openEdit())}
+            >
+              {editing ? 'Close' : 'Edit'}
+            </button>
+          )}
           <header className="profile-header">
             <div className="avatar-wrapper">
               {profile.avatarUrl ? (
@@ -187,6 +196,9 @@ export default function ProfilePage() {
             </div>
 
             <h1 className="display-name">{profile.displayName}</h1>
+            {isOwner && user?.email && (
+              <p className="profile-email">{user.email}</p>
+            )}
             {profile.role && (
               <div className="role-badge">
                 {profile.role}{profile.company ? ` @ ${profile.company}` : ''}
@@ -194,8 +206,8 @@ export default function ProfilePage() {
             )}
             {profile.bio && <p className="bio">{profile.bio}</p>}
 
-            <dl className="profile-meta">
-              {profile.location && (
+            {profile.location && (
+              <dl className="profile-meta">
                 <div className="profile-meta-row">
                   <span className="profile-meta-ico" aria-hidden="true">📍</span>
                   <div>
@@ -203,17 +215,8 @@ export default function ProfilePage() {
                     <dd>{profile.location}</dd>
                   </div>
                 </div>
-              )}
-              {isOwner && user?.email && (
-                <div className="profile-meta-row">
-                  <span className="profile-meta-ico" aria-hidden="true">✉️</span>
-                  <div>
-                    <dt>Email <span className="profile-meta-note">(only visible to you)</span></dt>
-                    <dd>{user.email}</dd>
-                  </div>
-                </div>
-              )}
-            </dl>
+              </dl>
+            )}
           </header>
 
           <div className="links-grid" id="profile-links">
@@ -247,14 +250,6 @@ export default function ProfilePage() {
             })}
           </div>
 
-          {isOwner && (
-            <div className="profile-owner-actions">
-              <button type="button" className="btn-teal" onClick={() => (editing ? setEditing(false) : openEdit())}>
-                {editing ? 'Close editor' : 'Edit profile'}
-              </button>
-            </div>
-          )}
-
           <footer className="card-footer">
             <p>Verified Developer Profile</p>
             <div className="logo-sm">⚡ DevCard</div>
@@ -262,79 +257,79 @@ export default function ProfilePage() {
         </div>
 
         {isOwner && editing && (
-          <section className="profile-sheet" aria-label="Edit profile">
-            <h2 className="profile-sheet-title">Profile details</h2>
-            {saveError && <div className="event-sheet-error" style={{ margin: 0 }}>{saveError}</div>}
-            <form onSubmit={saveProfile}>
-              <div className="sheet-row">
+          <div className="profile-side">
+            <section className="profile-sheet" aria-label="Edit profile">
+              <h2 className="profile-sheet-title">Profile details</h2>
+              {saveError && <div className="event-sheet-error" style={{ margin: 0 }}>{saveError}</div>}
+              <form onSubmit={saveProfile}>
+                <div className="sheet-row">
+                  <label className="sheet-field">
+                    <span>Name</span>
+                    <input
+                      value={form.displayName}
+                      onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
+                      required
+                      minLength={1}
+                      maxLength={100}
+                    />
+                  </label>
+                  <label className="sheet-field">
+                    <span>Role / title</span>
+                    <input
+                      value={form.role}
+                      onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                      maxLength={100}
+                      placeholder="e.g. Full Stack Engineer"
+                    />
+                  </label>
+                </div>
+                <div className="sheet-row">
+                  <label className="sheet-field">
+                    <span>Company</span>
+                    <input
+                      value={form.company}
+                      onChange={e => setForm(f => ({ ...f, company: e.target.value }))}
+                      maxLength={100}
+                      placeholder="e.g. DevCard Labs"
+                    />
+                  </label>
+                  <label className="sheet-field">
+                    <span>Place</span>
+                    <input
+                      value={form.location}
+                      onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                      maxLength={120}
+                      placeholder="e.g. Mumbai, Remote"
+                    />
+                  </label>
+                </div>
                 <label className="sheet-field">
-                  <span>Name</span>
-                  <input
-                    value={form.displayName}
-                    onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
-                    required
-                    minLength={1}
-                    maxLength={100}
+                  <span>Bio</span>
+                  <textarea
+                    value={form.bio}
+                    onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                    rows={3}
+                    maxLength={300}
+                    placeholder="What do you do?"
                   />
                 </label>
-                <label className="sheet-field">
-                  <span>Role / title</span>
-                  <input
-                    value={form.role}
-                    onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                    maxLength={100}
-                    placeholder="e.g. Full Stack Engineer"
-                  />
-                </label>
-              </div>
-              <div className="sheet-row">
-                <label className="sheet-field">
-                  <span>Company</span>
-                  <input
-                    value={form.company}
-                    onChange={e => setForm(f => ({ ...f, company: e.target.value }))}
-                    maxLength={100}
-                    placeholder="e.g. DevCard Labs"
-                  />
-                </label>
-                <label className="sheet-field">
-                  <span>Place</span>
-                  <input
-                    value={form.location}
-                    onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
-                    maxLength={120}
-                    placeholder="e.g. Mumbai, Remote"
-                  />
-                </label>
-              </div>
-              <label className="sheet-field">
-                <span>Bio</span>
-                <textarea
-                  value={form.bio}
-                  onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
-                  rows={3}
-                  maxLength={300}
-                  placeholder="What do you do?"
-                />
-              </label>
-              <div className="profile-form-actions">
-                <button type="submit" className="btn-navy" disabled={saving}>
-                  {saving ? 'Saving…' : 'Save changes'}
-                </button>
-                <button type="button" className="btn-sheet-outline" onClick={() => setEditing(false)}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </section>
-        )}
+                <div className="profile-form-actions">
+                  <button type="submit" className="btn-navy" disabled={saving}>
+                    {saving ? 'Saving…' : 'Save changes'}
+                  </button>
+                  <button type="button" className="btn-sheet-outline" onClick={() => setEditing(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </section>
 
-        {isOwner && (
-          <section className="profile-sheet" aria-label="Customize appearance">
-            <h2 className="profile-sheet-title">Customize your DevCard</h2>
-            <p className="sheet-hint">Accent, background and font apply to this browser only — your public card looks the same for everyone.</p>
-            <ThemeCustomizer />
-          </section>
+            <section className="profile-sheet" aria-label="Customize appearance">
+              <h2 className="profile-sheet-title">Colours</h2>
+              <p className="sheet-hint">Applies to this browser only.</p>
+              <ThemeCustomizer />
+            </section>
+          </div>
         )}
 
         <div className="get-your-own">

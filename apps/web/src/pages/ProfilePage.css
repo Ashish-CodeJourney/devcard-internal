@@ -207,19 +207,59 @@
   text-overflow: ellipsis;
 }
 
-.profile-meta-note {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 500;
+/* Owner edit button (top-right of the card) */
+.profile-edit-float {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
 }
 
-/* Owner actions + editor */
-.profile-owner-actions {
+.profile-edit-float:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-border);
+}
+
+/* Plain email line under the name (owner only, no box) */
+.profile-email {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Side-by-side editor + colour picker */
+.profile-side {
   display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 1.5rem;
-  flex-wrap: wrap;
+  gap: 20px;
+  width: 100%;
+  max-width: 1080px;
+  align-items: flex-start;
+}
+
+.profile-side > .profile-sheet {
+  margin-top: 0;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .profile-side {
+    flex-direction: column;
+  }
+
+  .profile-side > .profile-sheet {
+    max-width: 540px;
+    width: 100%;
+  }
 }
 
 .profile-sheet {
