@@ -24,6 +24,16 @@
   --text-secondary: #A1A8A3;
   --text-muted: #6E7671;
 
+  /* Status */
+  --success: #4ADE80;
+  --success-soft: rgba(74, 222, 128, 0.14);
+  --error: #FF6B6B;
+  --error-soft: rgba(255, 107, 107, 0.14);
+  --warning: #FFC24B;
+  --warning-soft: rgba(255, 194, 75, 0.14);
+  --info: #7DD3FC;
+  --info-soft: rgba(125, 211, 252, 0.14);
+
   /* Type */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

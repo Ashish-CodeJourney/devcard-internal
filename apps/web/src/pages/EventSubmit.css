@@ -1,21 +1,24 @@
-/* ─── Event submit sheet — light form card (scoped, does not touch EventsPages.css) ─── */
+/* ─── Event submit sheet — Dribbble form layout, app theme colors ──────────────
+   Layout follows the reference (band header, boxed sections, 3-col rows,
+   pill radios); every color comes from the active theme variables. */
 
 .event-sheet {
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   max-width: 920px;
   margin: 0 auto;
   width: 100%;
 }
 
-/* Navy header band */
+/* Header band */
 .event-sheet-band {
-  background: #1e3a5f;
-  color: #ffffff;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -27,13 +30,13 @@
   margin: 2px 0 4px;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .event-sheet-band p {
   margin: 0;
   font-size: 0.85rem;
-  color: #cbd5e1;
+  color: var(--text-secondary);
 }
 
 .event-sheet-eyebrow {
@@ -41,15 +44,15 @@
   letter-spacing: 0.14em;
   font-size: 0.7rem;
   font-weight: 700;
-  color: #7dd3fc;
+  color: var(--primary);
 }
 
 .event-sheet-close {
-  color: #ffffff;
+  color: var(--text-secondary);
   text-decoration: none;
   font-size: 1.1rem;
   line-height: 1;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--border);
   border-radius: 8px;
   width: 32px;
   height: 32px;
@@ -60,14 +63,15 @@
 }
 
 .event-sheet-close:hover {
-  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  border-color: var(--accent-border);
 }
 
 .event-sheet-error {
   margin: 16px 24px 0;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
+  background: var(--error-soft);
+  border: 1px solid var(--error);
+  color: var(--error);
   font-size: 0.88rem;
   border-radius: 8px;
   padding: 10px 14px;
@@ -82,7 +86,7 @@
 
 /* Boxed sub-sections */
 .event-sheet-box {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
   display: flex;
@@ -96,7 +100,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #1e3a5f;
+  color: var(--text-secondary);
 }
 
 /* Flexible rows — fields share the row, wrap on narrow screens */
@@ -114,7 +118,7 @@
   gap: 6px;
   font-size: 0.82rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .sheet-field > span {
@@ -126,9 +130,9 @@
 .sheet-field textarea {
   font: inherit;
   font-weight: 400;
-  color: #111827;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 9px 12px;
   width: 100%;
@@ -139,15 +143,15 @@
 .sheet-field select:focus,
 .sheet-field textarea:focus {
   outline: none;
-  border-color: #1e3a5f;
-  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .sheet-field textarea {
   resize: vertical;
 }
 
-/* Radio pills (event type / mode) */
+/* Radio pills (event type) */
 .sheet-pills {
   display: flex;
   flex-wrap: wrap;
@@ -158,24 +162,24 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 7px 14px;
   font-size: 0.82rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-secondary);
   cursor: pointer;
-  background: #ffffff;
+  background: transparent;
 }
 
 .sheet-pill:has(input:checked) {
-  background: #1e3a5f;
-  border-color: #1e3a5f;
-  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 .sheet-pill input {
-  accent-color: #14b8a6;
+  accent-color: var(--accent);
   margin: 0;
 }
 
@@ -185,7 +189,7 @@
   gap: 6px 16px;
   align-items: center;
   font-size: 0.85rem;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .sheet-inline-radios label {
@@ -196,7 +200,7 @@
 }
 
 .sheet-inline-radios input {
-  accent-color: #14b8a6;
+  accent-color: var(--accent);
   margin: 0;
 }
 
@@ -205,10 +209,10 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px 16px;
-  background: #f8fafc;
+  background: var(--bg-elevated);
   flex-wrap: wrap;
 }
 
@@ -216,8 +220,8 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #1e3a5f;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--on-accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -243,12 +247,12 @@
 
 .event-sheet-profile-info strong {
   font-size: 0.9rem;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .event-sheet-profile-info span {
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -265,17 +269,17 @@
 .btn-navy {
   font: inherit;
   font-size: 0.85rem;
-  font-weight: 600;
-  background: #1e3a5f;
-  color: #ffffff;
-  border: 1px solid #1e3a5f;
+  font-weight: 700;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 1px solid var(--accent);
   border-radius: 8px;
   padding: 10px 22px;
   cursor: pointer;
 }
 
 .btn-navy:hover:not(:disabled) {
-  background: #16304f;
+  filter: brightness(1.08);
 }
 
 .btn-navy:disabled {
@@ -287,9 +291,9 @@
   font: inherit;
   font-size: 0.8rem;
   font-weight: 600;
-  background: #14b8a6;
-  color: #ffffff;
-  border: 1px solid #14b8a6;
+  background: var(--accent-soft);
+  color: var(--primary);
+  border: 1px solid var(--accent-border);
   border-radius: 8px;
   padding: 8px 16px;
   cursor: pointer;
@@ -297,16 +301,16 @@
 }
 
 .btn-teal:hover {
-  background: #0d9488;
+  border-color: var(--accent);
 }
 
 .btn-sheet-outline {
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
-  background: #ffffff;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 22px;
   cursor: pointer;
@@ -315,7 +319,8 @@
 }
 
 .btn-sheet-outline:hover {
-  border-color: #9ca3af;
+  color: var(--text-primary);
+  border-color: var(--accent-border);
 }
 
 .btn-remember {
@@ -323,8 +328,8 @@
   font-size: 0.78rem;
   font-weight: 500;
   background: transparent;
-  color: #0d9488;
-  border: 1px dashed #99f6e4;
+  color: var(--primary);
+  border: 1px dashed var(--accent-border);
   border-radius: 999px;
   padding: 7px 14px;
   cursor: pointer;
@@ -332,7 +337,7 @@
 }
 
 .btn-remember:hover {
-  background: #f0fdfa;
+  border-color: var(--accent);
 }
 
 .event-sheet-footer {
@@ -347,12 +352,12 @@
   margin: 0;
   font-size: 0.78rem;
   font-weight: 400;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .sheet-hint .link-button {
   font: inherit;
-  color: #0d9488;
+  color: var(--primary);
   background: none;
   border: none;
   padding: 0;

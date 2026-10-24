@@ -12,6 +12,8 @@ import {
   withAlpha,
 } from '../theme/tokens';
 
+const soft = (hex: string, isDark: boolean) => withAlpha(hex, isDark ? 0.14 : 0.12);
+
 type Theme = 'light' | 'dark';
 
 const ACCENT_KEY = 'devcard.theme.accent';
@@ -101,6 +103,15 @@ function applyCssVars(accentColor: string, backgroundColor: string, fontId: stri
 
   set('--border', surfaces.border);
   set('--border-glass', surfaces.border);
+
+  set('--success', base.success);
+  set('--success-soft', soft(base.success, dark));
+  set('--error', base.error);
+  set('--error-soft', soft(base.error, dark));
+  set('--warning', base.warning);
+  set('--warning-soft', soft(base.warning, dark));
+  set('--info', base.info);
+  set('--info-soft', soft(base.info, dark));
 
   set('--font-sans', font.sans);
   set('--font-display', font.display);

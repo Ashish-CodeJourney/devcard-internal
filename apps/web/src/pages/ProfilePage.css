@@ -4,8 +4,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at 50% 0%, var(--accent, #6366f1), transparent 50%),
-              #020617;
+  background: radial-gradient(circle at 50% 0%, var(--accent, var(--primary)), transparent 50%),
+              var(--bg-page);
   opacity: 0.18;
   z-index: -1;
 }
@@ -31,11 +31,11 @@
   max-width: 540px;
   border-radius: var(--radius-xl);
   padding: 2.5rem 2rem;
-  box-shadow: 0 26px 60px -20px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-lg);
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
 }
 
 /* Loading Skeleton */
@@ -50,9 +50,9 @@
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.06) 25%,
-    rgba(255, 255, 255, 0.12) 50%,
-    rgba(255, 255, 255, 0.06) 75%
+    var(--bg-elevated) 25%,
+    var(--border) 50%,
+    var(--bg-elevated) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
@@ -110,7 +110,7 @@
   height: 100%;
   border-radius: 32% 68% 63% 37% / 34% 36% 64% 66%;
   object-fit: cover;
-  border: 3px solid rgba(255, 255, 255, 0.18);
+  border: 3px solid var(--border);
   position: relative;
   z-index: 2;
 }
@@ -148,8 +148,8 @@
   align-items: center;
   justify-content: center;
   padding: 0.45rem 1rem;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: 999px;
   font-size: 0.9rem;
   font-weight: 700;
@@ -177,8 +177,8 @@
   align-items: center;
   padding: 1rem;
   border-radius: calc(var(--radius) * 1.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
   box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.35);
   transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
   animation: slideIn 0.5s ease-out forwards;
@@ -188,13 +188,12 @@
 
 .link-tile:hover,
 .link-tile:focus-visible {
-  background: rgba(255, 255, 255, 0.13);
   transform: translateY(-2px);
-  border-color: rgba(99, 102, 241, 0.35);
+  border-color: var(--accent-border);
 }
 
 .link-tile:focus-visible {
-  outline: 3px solid rgba(99, 102, 241, 0.2);
+  outline: 3px solid var(--accent-border);
   outline-offset: 3px;
 }
 
@@ -255,7 +254,7 @@
 .card-footer {
   margin-top: 2.5rem;
   padding-top: 1.75rem;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -267,7 +266,7 @@
 
 .logo-sm {
   color: var(--text-secondary);
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-display);
   font-weight: 700;
 }
 
@@ -297,9 +296,9 @@
 }
 
 .copy-link-button {
-  border: 1px solid var(--border-glass);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-elevated);
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
@@ -309,7 +308,7 @@
 }
 
 .copy-link-button:hover {
-  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--accent-border);
   transform: translateY(-1px);
 }
 
@@ -330,7 +329,7 @@
 }
 
 .copy-message.error {
-  color: #ef4444;
+  color: var(--error);
 }
 
 /* Error State */
