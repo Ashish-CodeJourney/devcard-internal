@@ -160,3 +160,73 @@
     display: none;
   }
 }
+
+/* ─── Theme customization panel ─── */
+
+.nav-menu.theme-panel {
+  min-width: 264px;
+  max-width: calc(100vw - 48px);
+  padding: 14px;
+  gap: 10px;
+}
+
+.theme-panel-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+.theme-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+}
+
+.theme-swatch:hover {
+  transform: scale(1.12);
+}
+
+.theme-swatch.selected {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.theme-fonts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.theme-font {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.theme-font:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.theme-font.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent, #0B0D0F);
+  font-weight: 600;
+}
