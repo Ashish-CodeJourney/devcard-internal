@@ -92,10 +92,13 @@
   100% { background-position: -200% 0; }
 }
 
-/* Profile Header */
-.profile-header {
-  text-align: center;
-  margin-bottom: 2.5rem;
+/* Compact ID header (avatar left, identity right) */
+.profile-id {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  text-align: left;
+  margin-bottom: 1.75rem;
 }
 
 .avatar-wrapper {
@@ -103,6 +106,36 @@
   width: 120px;
   height: 120px;
   margin: 0 auto 1.75rem;
+  flex-shrink: 0;
+}
+
+.avatar-wrapper.avatar-sm {
+  width: 84px;
+  height: 84px;
+  margin: 0;
+}
+
+.profile-id-info {
+  min-width: 0;
+}
+
+.profile-id-name {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.profile-id-sub {
+  margin: 2px 0 0;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+
+.profile-id-sub.muted {
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .avatar {
@@ -136,70 +169,36 @@
   z-index: 1;
 }
 
-.display-name {
-  font-size: clamp(2rem, 4vw, 2.5rem);
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  margin-bottom: 0.75rem;
-}
-
-.role-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.45rem 1rem;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
-}
-
-.bio {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  line-height: 1.85;
-  max-width: 640px;
-  margin: 0 auto;
-}
-
-/* Profile facts (place, email) */
-.profile-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 1.25rem auto 0;
-  max-width: 420px;
-  text-align: left;
-}
-
-.profile-meta-row {
+/* Info cards (personal information / address) */
+.profile-sheet-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.65rem 0.9rem;
 }
 
-.profile-meta-ico {
-  font-size: 1.05rem;
-  flex-shrink: 0;
+.profile-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 20px;
+  margin: 0;
 }
 
-.profile-meta-row dt {
+.profile-info-item {
+  min-width: 0;
+}
+
+.profile-info-item dt {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
+  margin-bottom: 2px;
 }
 
-.profile-meta-row dd {
-  margin: 1px 0 0;
+.profile-info-item dd {
+  margin: 0;
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--text-primary);
@@ -207,58 +206,25 @@
   text-overflow: ellipsis;
 }
 
-/* Owner edit button (top-right of the card) */
-.profile-edit-float {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 3;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  background: var(--bg-elevated);
+.profile-info-span {
+  grid-column: 1 / -1;
+}
+
+.profile-info-span dd {
+  font-weight: 400;
   color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 7px 14px;
-  cursor: pointer;
+  line-height: 1.6;
+  white-space: normal;
 }
 
-.profile-edit-float:hover {
-  color: var(--text-primary);
-  border-color: var(--accent-border);
-}
-
-/* Plain email line under the name (owner only, no box) */
-.profile-email {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-/* Side-by-side editor + colour picker */
-.profile-side {
-  display: flex;
-  gap: 20px;
-  width: 100%;
-  max-width: 1080px;
-  align-items: flex-start;
-}
-
-.profile-side > .profile-sheet {
-  margin-top: 0;
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-@media (max-width: 900px) {
-  .profile-side {
-    flex-direction: column;
+@media (max-width: 720px) {
+  .profile-id {
+    gap: 14px;
   }
 
-  .profile-side > .profile-sheet {
-    max-width: 540px;
-    width: 100%;
+  .profile-info-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 
@@ -477,15 +443,13 @@
 /* Responsive */
 @media (max-width: 720px) {
   .profile-card { padding: 2rem 1.5rem; }
-  .profile-header { margin-bottom: 2rem; }
-  .avatar-wrapper { width: 108px; height: 108px; margin-bottom: 1.5rem; }
+  .avatar-wrapper.avatar-sm { width: 72px; height: 72px; }
   .card-footer { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 520px) {
   .profile-container { padding: 2rem 1rem 2.5rem; }
-  .display-name { font-size: 2rem; }
-  .link-tile { padding: 0.95rem; }
-  .tile-content { margin-left: 0.9rem; }
+  .profile-id-name { font-size: 1.6rem; }
+  .profile-link { padding: 0.7rem 0.15rem; }
   .card-footer { text-align: left; }
 }
