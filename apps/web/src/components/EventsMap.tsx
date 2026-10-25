@@ -59,13 +59,30 @@ export default function EventsMap({
       center,
       zoom,
       scrollWheelZoom: true,
-      worldCopyJump: true,
+      // Don't loop the world horizontally — clamp panning to one earth.
+      worldCopyJump: false,
+      maxBounds: [
+        [-90, -180],
+        [90, 180],
+      ],
+      maxBoundsViscosity: 1.0,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
+      noWrap: true,
       attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+    });
+    const satellite = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        maxZoom: 19,
+        noWrap: true,
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+      },
+    );
+    satellite.addTo(map);
+    L.control.layers({ Street: street, Satellite: satellite }, undefined, { position: 'topright' }).addTo(map);
 
     markerLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
