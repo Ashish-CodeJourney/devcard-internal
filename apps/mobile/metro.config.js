@@ -15,7 +15,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
-config.resolver.disableHierarchicalLookup = true;
+config.resolver.disableHierarchicalLookup = false;
 
 config.resolver.blockList = [/\.cxx\/.*/];
 
